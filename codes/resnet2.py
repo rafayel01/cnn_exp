@@ -271,52 +271,130 @@ class ResNet18(nn.Module):
         x = self.fc(x)
         return x
 
-from typing import Type
-class BasicBlock(nn.Module):
+
+class ResNet18_with_cable_eq(nn.Module):
     def __init__(
         self, 
-        in_channels: int,
-        out_channels: int,
-        stride: int = 1,
-        expansion: int = 1,
-        downsample: nn.Module = None
+        img_channels: int,
+        num_layers: int,
+        block: Type[BasicBlock],
+        num_classes: int  = 10
     ) -> None:
-        super(BasicBlock, self).__init__()
+        super(ResNet18_with_cable_eq_2, self).__init__()
+        # Initialazing kernels
+        filter1 = torch.Tensor([[[0,  1,  0], 
+                                [0, -2,  0],
+                                [0,  1,  0]]])
+        filter2 = torch.Tensor([[[0,  0,  0], 
+                                [1, -2,  1],
+                                [0,  0,  0]]])
+        filter3 = torch.Tensor([[[0,  0,  0], 
+                                 [0,  1,  0],
+                                 [0,  0,  0]]])
+        self.register_buffer("filter1", filter1)
+        self.register_buffer("filter2", filter2)
+        self.register_buffer("filter3", filter3)
+        self.weight1_1 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(3, 3, 1))
+        #self.bias = nn.Parameter(torch.Tensor(1))
+        nn.init.xavier_normal_(self.weight1_1)
+        nn.init.xavier_normal_(self.weight1_2)
+        nn.init.xavier_normal_(self.weight1_3)
+        #self.bias = nn.Parameter(torch.Tensor(1))
 
-        # Multiplicative factor for the subsequent conv2d layer's output channels.
-        # It is 1 for ResNet18 and ResNet34.
-        self.expansion = expansion
-        self.downsample = downsample
+        if num_layers == 18:
+            # The following `layers` list defines the number of `BasicBlock` 
+            # to use to build the network and how many basic blocks to stack
+            # together.
+            layers = [2, 2, 2, 2]
+            self.expansion = 1
+        
+        self.in_channels = 64
+        # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
+        # three layers. Here, kernel size is 7.
         self.conv1 = nn.Conv2d(
-            in_channels, 
-            out_channels, 
-            kernel_size=3, 
-            stride=stride, 
-            padding=1,
+            in_channels=img_channels,
+            out_channels=self.in_channels,
+            kernel_size=7, 
+            stride=2,
+            padding=3,
             bias=False
         )
-        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.bn1 = nn.BatchNorm2d(self.in_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(
-            out_channels, 
-            out_channels*self.expansion, 
-            kernel_size=3, 
-            padding=1,
-            bias=False
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),
+                                nn.LogSoftmax(dim=1))
+    def _make_layer(
+        self, 
+        block: Type[BasicBlock],
+        out_channels: int,
+        blocks: int,
+        stride: int = 1
+    ) -> nn.Sequential:
+        downsample = None
+        if stride != 1:
+            """
+            This should pass from `layer2` to `layer4` or 
+            when building ResNets50 and above. Section 3.3 of the paper
+            Deep Residual Learning for Image Recognition
+            (https://arxiv.org/pdf/1512.03385v1.pdf).
+            """
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.in_channels, 
+                    out_channels*self.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False 
+                ),
+                nn.BatchNorm2d(out_channels * self.expansion),
+            )
+        layers = []
+        layers.append(
+            block(
+                self.in_channels, out_channels, stride, self.expansion, downsample
+            )
         )
-        self.bn2 = nn.BatchNorm2d(out_channels*self.expansion)
+        self.in_channels = out_channels * self.expansion
+        for i in range(1, blocks):
+            layers.append(block(
+                self.in_channels,
+                out_channels,
+                expansion=self.expansion
+            ))
+        return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        identity = x
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-        if self.downsample is not None:
-            identity = self.downsample(x)
-        out += identity
-        out = self.relu(out)
-        return  out
+        self.kernel1_1 = torch.einsum("ijk, klm -> ijlm", self.weight1_1, self.filter1)
+        self.kernel1_2 = torch.einsum("ijk, klm -> ijlm", self.weight1_2, self.filter2)
+        self.kernel1_3 = torch.einsum("ijk, klm -> ijlm", self.weight1_3, self.filter3)
+        #print(f"Kernel1_1: {self.kernel1_1, self.kernel1_1.shape}")
+        #print(f"Kernel1_2: {self.kernel1_2, self.kernel1_2.shape}")
+        #print(f"Kernel1_3: {self.kernel1_3, self.kernel1_3.shape}")
+        x = F.conv2d(input=x, weight=self.kernel1_1, padding=1) + F.conv2d(input=x, weight=self.kernel1_2, padding=1) + F.conv2d(input=x, weight=self.kernel1_3, padding=1)
+        x = self.bn1(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        # The spatial dimension of the final layer's feature 
+        # map should be (7, 7) for all ResNets.
+        #print('Dimensions of the last convolutional feature map: ', x.shape)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
+
 
 class ResNet18_with_cable_eq_2(nn.Module):
     def __init__(
@@ -442,6 +520,7 @@ class ResNet18_with_cable_eq_2(nn.Module):
         #print(f"Kernel1_2: {self.kernel1_2, self.kernel1_2.shape}")
         #print(f"Kernel1_3: {self.kernel1_3, self.kernel1_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel1_1, padding=1) + F.conv2d(input=x, weight=self.kernel1_2, padding=1) + F.conv2d(input=x, weight=self.kernel1_3, padding=1)
+        x = self.bn1(x)
         self.kernel2_1 = torch.einsum("ijk, klm -> ijlm", self.weight2_1, self.filter2_1)
         self.kernel2_2 = torch.einsum("ijk, klm -> ijlm", self.weight2_2, self.filter2_2)
         self.kernel2_3 = torch.einsum("ijk, klm -> ijlm", self.weight2_3, self.filter2_3)
@@ -449,6 +528,7 @@ class ResNet18_with_cable_eq_2(nn.Module):
         #print(f"Kernel2_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel2_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel2_1, padding=1) + F.conv2d(input=x, weight=self.kernel2_2, padding=1) + F.conv2d(input=x, weight=self.kernel2_3, padding=1)
+        x = self.bn1(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -601,6 +681,7 @@ class ResNet18_with_cable_eq_3(nn.Module):
         #print(f"Kernel1_2: {self.kernel1_2, self.kernel1_2.shape}")
         #print(f"Kernel1_3: {self.kernel1_3, self.kernel1_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel1_1, padding=1) + F.conv2d(input=x, weight=self.kernel1_2, padding=1) + F.conv2d(input=x, weight=self.kernel1_3, padding=1)
+        x = self.bn1(x)
         self.kernel2_1 = torch.einsum("ijk, klm -> ijlm", self.weight2_1, self.filter1)
         self.kernel2_2 = torch.einsum("ijk, klm -> ijlm", self.weight2_2, self.filter2)
         self.kernel2_3 = torch.einsum("ijk, klm -> ijlm", self.weight2_3, self.filter3)
@@ -608,6 +689,7 @@ class ResNet18_with_cable_eq_3(nn.Module):
         #print(f"Kernel2_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel2_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel2_1, padding=1) + F.conv2d(input=x, weight=self.kernel2_2, padding=1) + F.conv2d(input=x, weight=self.kernel2_3, padding=1)
+        x = self.bn1(x)
         self.kernel3_1 = torch.einsum("ijk, klm -> ijlm", self.weight3_1, self.filter1)
         self.kernel3_2 = torch.einsum("ijk, klm -> ijlm", self.weight3_2, self.filter2)
         self.kernel3_3 = torch.einsum("ijk, klm -> ijlm", self.weight3_3, self.filter3)
@@ -615,6 +697,7 @@ class ResNet18_with_cable_eq_3(nn.Module):
         #print(f"Kernel2_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel2_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel3_1, padding=1) + F.conv2d(input=x, weight=self.kernel3_2, padding=1) + F.conv2d(input=x, weight=self.kernel3_3, padding=1)
+        x = self.bn1(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -778,6 +861,7 @@ class ResNet18_with_cable_eq_4(nn.Module):
         #print(f"Kernel1_2: {self.kernel1_2, self.kernel1_2.shape}")
         #print(f"Kernel1_3: {self.kernel1_3, self.kernel1_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel1_1, padding=1) + F.conv2d(input=x, weight=self.kernel1_2, padding=1) + F.conv2d(input=x, weight=self.kernel1_3, padding=1)
+        x = self.bn1(x)
         self.kernel2_1 = torch.einsum("ijk, klm -> ijlm", self.weight2_1, self.filter1)
         self.kernel2_2 = torch.einsum("ijk, klm -> ijlm", self.weight2_2, self.filter2)
         self.kernel2_3 = torch.einsum("ijk, klm -> ijlm", self.weight2_3, self.filter3)
@@ -785,6 +869,7 @@ class ResNet18_with_cable_eq_4(nn.Module):
         #print(f"Kernel2_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel2_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel2_1, padding=1) + F.conv2d(input=x, weight=self.kernel2_2, padding=1) + F.conv2d(input=x, weight=self.kernel2_3, padding=1)
+        x = self.bn1(x)
         self.kernel3_1 = torch.einsum("ijk, klm -> ijlm", self.weight3_1, self.filter1)
         self.kernel3_2 = torch.einsum("ijk, klm -> ijlm", self.weight3_2, self.filter2)
         self.kernel3_3 = torch.einsum("ijk, klm -> ijlm", self.weight3_3, self.filter3)
@@ -792,6 +877,7 @@ class ResNet18_with_cable_eq_4(nn.Module):
         #print(f"Kernel2_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel2_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel3_1, padding=1) + F.conv2d(input=x, weight=self.kernel3_2, padding=1) + F.conv2d(input=x, weight=self.kernel3_3, padding=1)
+        x = self.bn1(x)
         self.kernel4_1 = torch.einsum("ijk, klm -> ijlm", self.weight4_1, self.filter1)
         self.kernel4_2 = torch.einsum("ijk, klm -> ijlm", self.weight4_2, self.filter2)
         self.kernel4_3 = torch.einsum("ijk, klm -> ijlm", self.weight4_3, self.filter3)
@@ -799,6 +885,7 @@ class ResNet18_with_cable_eq_4(nn.Module):
         #print(f"Kernel4_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel4_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel4_1, padding=1) + F.conv2d(input=x, weight=self.kernel4_2, padding=1) + F.conv2d(input=x, weight=self.kernel4_3, padding=1)
+        x = self.bn1(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -973,6 +1060,7 @@ class ResNet18_with_cable_eq_5(nn.Module):
         #print(f"Kernel1_2: {self.kernel1_2, self.kernel1_2.shape}")
         #print(f"Kernel1_3: {self.kernel1_3, self.kernel1_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel1_1, padding=1) + F.conv2d(input=x, weight=self.kernel1_2, padding=1) + F.conv2d(input=x, weight=self.kernel1_3, padding=1)
+        x = self.bn1(x)
         self.kernel2_1 = torch.einsum("ijk, klm -> ijlm", self.weight2_1, self.filter1)
         self.kernel2_2 = torch.einsum("ijk, klm -> ijlm", self.weight2_2, self.filter2)
         self.kernel2_3 = torch.einsum("ijk, klm -> ijlm", self.weight2_3, self.filter3)
@@ -980,6 +1068,7 @@ class ResNet18_with_cable_eq_5(nn.Module):
         #print(f"Kernel2_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel2_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel2_1, padding=1) + F.conv2d(input=x, weight=self.kernel2_2, padding=1) + F.conv2d(input=x, weight=self.kernel2_3, padding=1)
+        x = self.bn1(x)
         self.kernel3_1 = torch.einsum("ijk, klm -> ijlm", self.weight3_1, self.filter1)
         self.kernel3_2 = torch.einsum("ijk, klm -> ijlm", self.weight3_2, self.filter2)
         self.kernel3_3 = torch.einsum("ijk, klm -> ijlm", self.weight3_3, self.filter3)
@@ -987,6 +1076,7 @@ class ResNet18_with_cable_eq_5(nn.Module):
         #print(f"Kernel3_2: {self.kernel3_2, self.kernel3_2.shape}")
         #print(f"Kernel3_3: {self.kernel3_3, self.kernel3_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel3_1, padding=1) + F.conv2d(input=x, weight=self.kernel3_2, padding=1) + F.conv2d(input=x, weight=self.kernel3_3, padding=1)
+        x = self.bn1(x)
         self.kernel4_1 = torch.einsum("ijk, klm -> ijlm", self.weight4_1, self.filter1)
         self.kernel4_2 = torch.einsum("ijk, klm -> ijlm", self.weight4_2, self.filter2)
         self.kernel4_3 = torch.einsum("ijk, klm -> ijlm", self.weight4_3, self.filter3)
@@ -994,6 +1084,7 @@ class ResNet18_with_cable_eq_5(nn.Module):
         #print(f"Kernel4_2: {self.kernel4_2, self.kernel4_2.shape}")
         #print(f"Kernel4_3: {self.kernel4_3, self.kernel4_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel4_1, padding=1) + F.conv2d(input=x, weight=self.kernel4_2, padding=1) + F.conv2d(input=x, weight=self.kernel4_3, padding=1)
+        x = self.bn1(x)
         self.kernel5_1 = torch.einsum("ijk, klm -> ijlm", self.weight5_1, self.filter1)
         self.kernel5_2 = torch.einsum("ijk, klm -> ijlm", self.weight5_2, self.filter2)
         self.kernel5_3 = torch.einsum("ijk, klm -> ijlm", self.weight5_3, self.filter3)
@@ -1001,6 +1092,7 @@ class ResNet18_with_cable_eq_5(nn.Module):
         #print(f"Kernel5_2: {self.kernel5_2, self.kernel5_2.shape}")
         #print(f"Kernel5_3: {self.kernel5_3, self.kernel5_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel5_1, padding=1) + F.conv2d(input=x, weight=self.kernel5_2, padding=1) + F.conv2d(input=x, weight=self.kernel5_3, padding=1)
+        x = self.bn1(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -1017,11 +1109,12 @@ class ResNet18_with_cable_eq_5(nn.Module):
         x = self.fc(x)
         return x
 
+model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     valid_loss_min = np.Inf
@@ -1033,13 +1126,13 @@ for model in models:
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    torch.save(model.state_dict(), f"/home/rafayel.veziryan/experiments/results/{str(model._get_name())}.pt")
+    torch.save(model.state_dict(), f"/home/rafayel.veziryan/experiments/results/with_bn/{str(model._get_name())}_bn.pt")
     model_cable_eq_dict ={}
     model_cable_eq_dict['train_loss']=cable_eq_tr_loss
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/experiments/results/{str(model._get_name())}.pkl', 'wb') as fp:
+    with open(f'/home/rafayel.veziryan/experiments/results/with_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
         pickle.dump(model_cable_eq_dict, fp)
         print('dictionary saved successfully to file')
 
