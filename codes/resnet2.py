@@ -126,7 +126,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
           
           if network_learned:
               valid_loss_min = batch_loss
-              torch.save(model.state_dict(), f'/home/rafayel.veziryan/experiments/results/{model._get_name()}_best.pt')
+              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/without_last_layer_bn/{model._get_name()}_bst.pt')
               print('Improvement-Detected, save-model')
       model.train()
   return train_loss, train_acc, val_loss, val_acc
@@ -1126,13 +1126,13 @@ for model in models:
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    torch.save(model.state_dict(), f"/home/rafayel.veziryan/experiments/results/with_bn/{str(model._get_name())}_bn.pt")
+    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/without_last_layer_bn/{model._get_name()}_best.pt')
     model_cable_eq_dict ={}
     model_cable_eq_dict['train_loss']=cable_eq_tr_loss
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/experiments/results/with_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+    with open(f'/home/rafayel.veziryan/experiments/results/without_last_layer_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
         pickle.dump(model_cable_eq_dict, fp)
         print('dictionary saved successfully to file')
 
