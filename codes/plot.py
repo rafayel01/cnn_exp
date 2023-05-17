@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 n_epochs=100
 models = ("ResNet18_with_cable_eq_bn", "ResNet18_with_cable_eq_2_bn", "ResNet18_with_cable_eq_3_bn", "ResNet18_with_cable_eq_4_bn", "ResNet18_with_cable_eq_5_bn")
 model_cable_eq_dict = []
-with open(f'/home/rafayel/cnn_exp/results/model_original.pkl', 'rb') as fp:
+with open(f'/home/rafayel.veziryan/cnn_exp/results/model_original.pkl', 'rb') as fp:
   model_cable_eq_dict.append(pickle.load(fp))
 for model in models:
-    with open(f'/home/rafayel/cnn_exp/results/with_bn/{model}.pkl', 'rb') as fp:
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/without_last_layer_bn/{model}.pkl', 'rb') as fp:
       model_cable_eq_dict.append(pickle.load(fp))
       #print(model_cable_eq_dict)
       #print('dictionary opened successfully to file')

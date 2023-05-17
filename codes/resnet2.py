@@ -280,7 +280,7 @@ class ResNet18_with_cable_eq(nn.Module):
         block: Type[BasicBlock],
         num_classes: int  = 10
     ) -> None:
-        super(ResNet18_with_cable_eq_2, self).__init__()
+        super(ResNet18_with_cable_eq, self).__init__()
         # Initialazing kernels
         filter1 = torch.Tensor([[[0,  1,  0], 
                                 [0, -2,  0],
@@ -1132,7 +1132,7 @@ for model in models:
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/experiments/results/without_last_layer_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/without_last_layer_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
         pickle.dump(model_cable_eq_dict, fp)
         print('dictionary saved successfully to file')
 
