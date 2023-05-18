@@ -1,4 +1,3 @@
-
 import torch
 import torchvision
 import numpy as np
@@ -6,7 +5,7 @@ import matplotlib.pyplot as plt
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet18
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import STL10
 from torchvision.transforms import ToTensor
 from torchvision.utils import make_grid
 from torch.utils.data.dataloader import DataLoader
@@ -39,24 +38,24 @@ def imshow(img):
 # imshow(after_layer)
 
 transform_train = transforms.Compose(
-    [transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
+    [transforms.RandomCrop(96, padding=4, padding_mode='reflect'),
      transforms.RandomHorizontalFlip(),
      transforms.ToTensor(),
-     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010),inplace=True)])
+     transforms.Normalize((0.44671097, 0.4398105 , 0.4066468), (0.2603405 , 0.25657743, 0.27126738),inplace=True)])
 transform_test = transforms.Compose([
     transforms.ToTensor(),
-     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010),inplace=True)
+     transforms.Normalize((0.44671097, 0.4398105 , 0.4066468), (0.2603405 , 0.25657743, 0.27126738),inplace=True)
 ])
 batch_size = 128
 
-trainset = torchvision.datasets.STL10(root='./data', train=True, download=True, transform=transform_train)
+trainset = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
                                           shuffle=True, num_workers=2, pin_memory=True)
-
-testset = torchvision.datasets.STL10(root='./data', train=False, download=True, transform=transform_test)
+print(len(trainset))
+testset = torchvision.datasets.STL10(root='./data', split='test', download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                          shuffle=False, num_workers=2, pin_memory=True)
-
+print(len(testset))
 
 def get_default_device():
     """Pick GPU if available, else CPU"""
