@@ -49,11 +49,11 @@ transform_test = transforms.Compose([
 ])
 batch_size = 128
 
-trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
+trainset = torchvision.datasets.STL10(root='./data', train=True, download=True, transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
                                           shuffle=True, num_workers=2, pin_memory=True)
 
-testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+testset = torchvision.datasets.STL10(root='./data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                          shuffle=False, num_workers=2, pin_memory=True)
 
@@ -126,7 +126,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
           
           if network_learned:
               valid_loss_min = batch_loss
-              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/without_first_layer_bn/{model._get_name()}_bst.pt')
+              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/stl10/{model._get_name()}_bst.pt')
               print('Improvement-Detected, save-model')
       model.train()
   return train_loss, train_acc, val_loss, val_acc
@@ -1109,12 +1109,13 @@ class ResNet18_with_cable_eq_5(nn.Module):
         x = self.fc(x)
         return x
 
+model_original = ResNet18(img_channels=3, num_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_original, model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     valid_loss_min = np.Inf
@@ -1126,13 +1127,13 @@ for model in models:
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/without_first_layer_bn/{model._get_name()}_best.pt')
+    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/stl10/{model._get_name()}_best.pt')
     model_cable_eq_dict ={}
     model_cable_eq_dict['train_loss']=cable_eq_tr_loss
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/without_first_layer_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/stl10/{str(model._get_name())}_bn.pkl', 'wb') as fp:
         pickle.dump(model_cable_eq_dict, fp)
         print('dictionary saved successfully to file')
 
