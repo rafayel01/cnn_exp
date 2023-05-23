@@ -1108,7 +1108,7 @@ class ResNet18_with_cable_eq_5(nn.Module):
         x = self.fc(x)
         return x
 
-model_original = ResNet18(img_channels=3, num_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_original = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
