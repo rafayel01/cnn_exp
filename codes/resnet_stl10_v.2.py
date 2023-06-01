@@ -522,6 +522,8 @@ class ResNet18_with_cable_eq_2(nn.Module):
         #print(f"Kernel1_2: {self.kernel1_2, self.kernel1_2.shape}")
         #print(f"Kernel1_3: {self.kernel1_3, self.kernel1_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel1_1, padding=1) + F.conv2d(input=x, weight=self.kernel1_2, padding=1) + F.conv2d(input=x, weight=self.kernel1_3, padding=1)
+        x = self.bn(x)
+        x = self.relu(x)
         self.kernel2_1 = torch.einsum("ijk, klm -> ijlm", self.weight2_1, self.filter2_1)
         self.kernel2_2 = torch.einsum("ijk, klm -> ijlm", self.weight2_2, self.filter2_2)
         self.kernel2_3 = torch.einsum("ijk, klm -> ijlm", self.weight2_3, self.filter2_3)
@@ -529,7 +531,7 @@ class ResNet18_with_cable_eq_2(nn.Module):
         #print(f"Kernel2_2: {self.kernel2_2, self.kernel2_2.shape}")
         #print(f"Kernel2_3: {self.kernel2_3, self.kernel2_3.shape}")
         x = F.conv2d(input=x, weight=self.kernel2_1, padding=1) + F.conv2d(input=x, weight=self.kernel2_2, padding=1) + F.conv2d(input=x, weight=self.kernel2_3, padding=1)
-        #x = self.bn(x)
+        x = self.relu(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -1116,7 +1118,7 @@ model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_cable_eq,) = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_cable_eq_2,) # = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     valid_loss_min = np.Inf
@@ -1128,14 +1130,14 @@ for model in models:
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/stl10/without_bn/{model._get_name()}_best.pt')
-    model_cable_eq_dict ={}
-    model_cable_eq_dict['train_loss']=cable_eq_tr_loss
-    model_cable_eq_dict['train_acc']=cable_eq_tr_acc
-    model_cable_eq_dict['test_loss']=cable_eq_v_loss
-    model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/stl10/without_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
-        pickle.dump(model_cable_eq_dict, fp)
-        print('dictionary saved successfully to file')
+    #torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/stl10/without_bn/{model._get_name()}_best.pt')
+    #model_cable_eq_dict ={}
+    #model_cable_eq_dict['train_loss']=cable_eq_tr_loss
+    #model_cable_eq_dict['train_acc']=cable_eq_tr_acc
+    #model_cable_eq_dict['test_loss']=cable_eq_v_loss
+    #model_cable_eq_dict['test_acc']=cable_eq_v_acc
+   # with open(f'/home/rafayel.veziryan/cnn_exp/results/stl10/without_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+    #    pickle.dump(model_cable_eq_dict, fp)
+    #    print('dictionary saved successfully to file')
 
 
