@@ -1158,57 +1158,37 @@ models = (model_original, ) #(model_cable_eq_2, model_cable_eq_3, model_cable_eq
 
 #for model in models:
 #    print(f"{model._get_name()}: {parameter_count(model)}")
-params = {
-    'lr': [0.001, 0.0001, 0.02],
-    'weight_decay': [1e-4],
-    'grad_clip': [0.1],
-    'batch_size': [128],
-    'max_epochs': [100]
-}
-def split_XY(trainset):
-    l = []
-    a = torch.Tensor(50000, 3, 32, 32)
-    for i, (image, label) in enumerate(trainset):
-        a[i, :, :, :] = image
-        l.append(label)
-    return a, torch.Tensor(l)
 
-X, y = split_XY(trainset)
+#def split_XY(trainset):
+    #l = []
+    #a = torch.Tensor(50000, 3, 32, 32)
+   # for i, (image, label) in enumerate(trainset):
+  #      a[i, :, :, :] = image
+  #      l.append(label)
+ #   return a, torch.Tensor(l)
 
-
-for model in models:
-    model2 = NeuralNetClassifier(
-        model,
-        criterion=F.cross_entropy,
-        optimizer=torch.optim.SGD,
-        iterator_train__shuffle=True
-    )
-    grid = GridSearchCV(estimator=model2, param_grid=params, n_jobs=-1, cv=5)
-    grid_result = grid.fit(X, y)
-    print(f"For {model._get_name()} Best: %f using %s" % (grid_result.best_score_, grid_result.best_params_))
-    means = grid_result.cv_results_['mean_test_score']
-    stds = grid_result.cv_results_['std_test_score']
-    params = grid_result.cv_results_['params']
-    for mean, stdev, param in zip(means, stds, params):
-        print("%f (%f) with: %r" % (mean, stdev, param))
-    '''
+#X, y = split_XY(trainset)
+res = []
+for lr in (0.5, 0.6, 0.7):
+    model = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
     valid_loss_min = np.Inf
     n_epochs = 100
-    max_lr = 0.1
+    max_lr = lr
     grad_clip = 0.1
     weight_decay = 1e-4
     optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, weight_decay=weight_decay, momentum=0.9)
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/{model._get_name()}_best.pt')
-    model_cable_eq_dict ={}
-    model_cable_eq_dict['train_loss']=cable_eq_tr_loss
-    model_cable_eq_dict['train_acc']=cable_eq_tr_acc
-    model_cable_eq_dict['test_loss']=cable_eq_v_loss
-    model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
-        pickle.dump(model_cable_eq_dict, fp)
-        print('dictionary saved successfully to file')
-    '''
+    res.append({lr: max(cable_eq_v_acc)})
+        #torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/{model._get_name()}_best.pt')
+        #model_cable_eq_dict ={}
+        #model_cable_eq_dict['train_loss']=cable_eq_tr_loss
+        #model_cable_eq_dict['train_acc']=cable_eq_tr_acc
+        #model_cable_eq_dict['test_loss']=cable_eq_v_loss
+        #model_cable_eq_dict['test_acc']=cable_eq_v_acc
+        #with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+        #    pickle.dump(model_cable_eq_dict, fp)
+        #    print('dictionary saved successfully to file')
 
+print(res)
