@@ -1,12 +1,12 @@
 import pickle
 import matplotlib.pyplot as plt
 n_epochs=100
-models = ("ResNet18_with_cable_eq_bn", "ResNet18_with_cable_eq_2_bn", "ResNet18_with_cable_eq_3_bn", "ResNet18_with_cable_eq_4_bn", "ResNet18_with_cable_eq_5_bn")
+models = ("ResNet18_with_cable_eq", "ResNet18_with_cable_eq_2", "ResNet18_with_cable_eq_3", "ResNet18_with_cable_eq_4", "ResNet18_with_cable_eq_5")
 model_cable_eq_dict = []
-with open(f'/home/rafayel/cnn_exp/results/stl10/without_bn/ResNet18_bn.pkl', 'rb') as fp:
+with open(f'/home/rafayel/cnn_exp/results/model_original.pkl', 'rb') as fp:
   model_cable_eq_dict.append(pickle.load(fp))
 for model in models:
-    with open(f'/home/rafayel/cnn_exp/results/stl10/without_bn/{model}.pkl', 'rb') as fp:
+    with open(f'/home/rafayel/cnn_exp/results/cifar10/without_bn/{model}.pkl', 'rb') as fp:
       model_cable_eq_dict.append(pickle.load(fp))
       #print(model_cable_eq_dict)
       #print('dictionary opened successfully to file')
