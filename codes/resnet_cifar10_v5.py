@@ -153,8 +153,8 @@ class BasicBlock(nn.Module):
 
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = my_layer(in_channels=out_channels,
-                              out_channels=out_channels*expansion)
+        self.conv1 = my_layer(in_channels=in_channels,
+                              out_channels=out_channels)
         self.bn2 = nn.BatchNorm2d(out_channels*self.expansion)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
@@ -237,6 +237,7 @@ class ResNet18(nn.Module):
                 in_channels, out_channels, stride, self.expansion, downsample
             )
         )
+        
         self.in_channels = out_channels * self.expansion
         for i in range(1, blocks):
             layers.append(block(
