@@ -185,7 +185,7 @@ class ResNet18(nn.Module):
             layers = [2, 2, 2]
             self.expansion = 1
         
-        self.in_channels = 64
+        self.in_channels = 3
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
         self.conv1 = nn.Conv2d(
@@ -239,6 +239,7 @@ class ResNet18(nn.Module):
         )
         
         self.in_channels = out_channels * self.expansion
+        print(f"self expansion: {self.expansion}")
         for i in range(1, blocks):
             layers.append(block(
                 self.in_channels,
@@ -278,9 +279,9 @@ class my_layer(nn.Module):
         self.register_buffer("filter1", filter1)
         self.register_buffer("filter2", filter2)
         self.register_buffer("filter3", filter3)
-        self.weight1_1 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
+        self.weight1_1 = nn.Parameter(torch.Tensor(128, in_channels, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(128, in_channels, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(128, in_channels, 1))
         #self.bias = nn.Parameter(torch.Tensor(1))
         nn.init.xavier_normal_(self.weight1_1)
         nn.init.xavier_normal_(self.weight1_2)
@@ -296,7 +297,7 @@ class my_layer(nn.Module):
         self.kernel1_1 = torch.einsum("ijk, klm -> ijlm", self.weight1_1, self.filter_1)
         self.kernel1_2 = torch.einsum("ijk, klm -> ijlm", self.weight1_2, self.filter_2)
         self.kernel1_3 = torch.einsum("ijk, klm -> ijlm", self.weight1_3, self.filter_3)
-        print(f"Weight: {(self.kernel1_1+self.kernel1_2+self.kernel1_3).shape}")
+        print(f"Weight: {(self.kernel1_1+self.kernel1_2+self.kernel1_3).shape}\n X: {x.shape}")
         x = F.conv2d(x, weight=self.kernel1_1+self.kernel1_2+self.kernel1_3, padding=1)
         x = self.bn01(x)
         x = self.relu(x)
