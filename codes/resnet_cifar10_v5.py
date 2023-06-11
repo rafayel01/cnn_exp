@@ -148,23 +148,13 @@ class BasicBlock(nn.Module):
         # It is 1 for ResNet18 and ResNet34.
         self.expansion = expansion
         self.downsample = downsample
-        self.conv1 = nn.Conv2d(
-            in_channels, 
-            out_channels, 
-            kernel_size=3, 
-            stride=stride, 
-            padding=1,
-            bias=False
-        )
+        self.conv1 = my_layer(in_channels=in_channels,
+                              out_channels=out_channels)
+
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(
-            out_channels, 
-            out_channels*self.expansion, 
-            kernel_size=3, 
-            padding=1,
-            bias=False
-        )
+        self.conv1 = my_layer(in_channels=in_channels,
+                              out_channels=out_channels)
         self.bn2 = nn.BatchNorm2d(out_channels*self.expansion)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
@@ -192,10 +182,10 @@ class ResNet18(nn.Module):
             # The following `layers` list defines the number of `BasicBlock` 
             # to use to build the network and how many basic blocks to stack
             # together.
-            layers = [2, 2, 2, 2]
+            layers = [2, 2, 2]
             self.expansion = 1
         
-        self.in_channels = 64
+        self.in_channels = 3
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
         self.conv1 = nn.Conv2d(
@@ -209,16 +199,16 @@ class ResNet18(nn.Module):
         self.bn1 = nn.BatchNorm2d(self.in_channels)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.layer1 = self._make_layer(block, 3,  32, layers[0])
+        self.layer2 = self._make_layer(block, 32,  64, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 64, 112, layers[2], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),
+        self.fc = nn.Sequential(nn.Linear(112*self.expansion, num_classes),
                                 nn.LogSoftmax(dim=1))
     def _make_layer(
         self, 
         block: Type[BasicBlock],
+        in_channels: int,
         out_channels: int,
         blocks: int,
         stride: int = 1
@@ -244,10 +234,11 @@ class ResNet18(nn.Module):
         layers = []
         layers.append(
             block(
-                self.in_channels, out_channels, stride, self.expansion, downsample
+                in_channels, out_channels, stride, self.expansion, downsample
             )
         )
         self.in_channels = out_channels * self.expansion
+        print(f"self expansion: {self.expansion}")
         for i in range(1, blocks):
             layers.append(block(
                 self.in_channels,
@@ -263,7 +254,6 @@ class ResNet18(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.layer4(x)
         # The spatial dimension of the final layer's feature 
         # map should be (7, 7) for all ResNets.
         #print('Dimensions of the last convolutional feature map: ', x.shape)
@@ -274,7 +264,7 @@ class ResNet18(nn.Module):
 
 
 class my_layer(nn.Module):
-    def __init__(self, img_channels) -> None:
+    def __init__(self, in_channels, out_channels) -> None:
         super().__init__()
         filter1 = torch.Tensor([[[0,  1,  0], 
                                 [0, -2,  0],
@@ -288,14 +278,14 @@ class my_layer(nn.Module):
         self.register_buffer("filter1", filter1)
         self.register_buffer("filter2", filter2)
         self.register_buffer("filter3", filter3)
-        self.weight1_1 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_1 = nn.Parameter(torch.Tensor(128, in_channels, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(128, in_channels, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(128, in_channels, 1))
         #self.bias = nn.Parameter(torch.Tensor(1))
         nn.init.xavier_normal_(self.weight1_1)
         nn.init.xavier_normal_(self.weight1_2)
         nn.init.xavier_normal_(self.weight1_3)
-        self.bn01 = nn.BatchNorm2d(img_channels)
+        self.bn01 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.filter_1 = filter1.to(device)
         self.filter_2 = filter2.to(device)
@@ -306,6 +296,7 @@ class my_layer(nn.Module):
         self.kernel1_1 = torch.einsum("ijk, klm -> ijlm", self.weight1_1, self.filter_1)
         self.kernel1_2 = torch.einsum("ijk, klm -> ijlm", self.weight1_2, self.filter_2)
         self.kernel1_3 = torch.einsum("ijk, klm -> ijlm", self.weight1_3, self.filter_3)
+        print(f"Weight: {(self.kernel1_1+self.kernel1_2+self.kernel1_3).shape}\n X: {x.shape}")
         x = F.conv2d(x, weight=self.kernel1_1+self.kernel1_2+self.kernel1_3, padding=1)
         x = self.bn01(x)
         x = self.relu(x)
@@ -321,25 +312,7 @@ class ResNet18_with_cable_eq(nn.Module):
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq, self).__init__()
-        # Initialazing kernels
-        
-        
-        # 2nd
-        '''
-        self.register_buffer("filter1", filter1)
-        self.register_buffer("filter2", filter2)
-        self.register_buffer("filter3", filter3)
-        self.weight2_1 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight2_2 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight2_3 = nn.Parameter(torch.Tensor(3, 3, 1))
-        #self.bias = nn.Parameter(torch.Tensor(1))
-        nn.init.xavier_normal_(self.weight2_1)
-        nn.init.xavier_normal_(self.weight2_2)
-        nn.init.xavier_normal_(self.weight2_3)
-        '''
-        #self.bias = nn.Parameter(torch.Tensor(1))
-        #self.bn02 = nn.BatchNorm2d(img_channels)
-
+    
         if num_layers == 18:
             # The following `layers` list defines the number of `BasicBlock` 
             # to use to build the network and how many basic blocks to stack
@@ -378,12 +351,6 @@ class ResNet18_with_cable_eq(nn.Module):
     ) -> nn.Sequential:
         downsample = None
         if stride != 1:
-            """
-            This should pass from `layer2` to `layer4` or 
-            when building ResNets50 and above. Section 3.3 of the paper
-            Deep Residual Learning for Image Recognition
-            (https://arxiv.org/pdf/1512.03385v1.pdf).
-            """
             downsample = nn.Sequential(
                 nn.Conv2d(
                     self.in_channels, 
@@ -410,6 +377,7 @@ class ResNet18_with_cable_eq(nn.Module):
         return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.mylayer_1(x)
+        print(x.shape)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -833,12 +801,12 @@ class ResNet18_with_cable_eq_5(nn.Module):
         return x
 
 model_original = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+#model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+#model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+##model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+#model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+#model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+models = (model_original, ) #, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     print(f"{model._get_name()}: {parameter_count(model)}")
