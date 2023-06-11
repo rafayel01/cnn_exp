@@ -9,7 +9,7 @@ models = ("ResNet18_bn",
           "ResNet18_with_cable_eq_4_bn",
           "ResNet18_with_cable_eq_5_bn")
 for model in models:
-    with open(f'/home/rafayel/cnn_exp/results/stl10/with_relu_bn/{model}.pkl', 'rb') as f:
+    with open(f'/home/rafayel/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model}.pkl', 'rb') as f:
         data = pickle.load(f)
     print(f"{model[:-3]} best accuracy: {max(data['test_acc'])}%")
 
@@ -29,12 +29,12 @@ leg = ("Original",
 colors = ('Black', 'Green', 'Red', 'Yellow', 'Blue', 'Gray')
 for i, pl in enumerate(plot):
     for j, model in enumerate(models):
-        with open(f'/home/rafayel/cnn_exp/results/stl10/with_relu_bn/{model}.pkl', 'rb') as f:
+        with open(f'/home/rafayel/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model}.pkl', 'rb') as f:
             data = pickle.load(f)
         plt.plot(np.arange(1, 101), data[pl], label=leg[j], color=colors[j])
     plt.title(title[i])
     plt.ylabel(ylabel[i])
     plt.xlabel("Num of Epochs")
     plt.legend()
-    plt.savefig(f'/home/rafayel/Paper/CNN/results/stl10/stl10_lr0.5_{pl}.png')
+    #plt.savefig(f'/home/rafayel/Paper/CNN/results/stl10/stl10_lr0.5_{pl}.png')
     plt.show()
