@@ -146,16 +146,17 @@ class BasicBlock(nn.Module):
 
         # Multiplicative factor for the subsequent conv2d layer's output channels.
         # It is 1 for ResNet18 and ResNet34.
+        print(f"out channels: {out_channels}")
         self.expansion = expansion
         self.downsample = downsample
         self.conv1 = my_layer(in_channels=in_channels,
                               out_channels=out_channels)
         print(f"In channels: {in_channels}")
-        self.bn1 = nn.BatchNorm2d(3)
+        self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = my_layer(in_channels=out_channels,
                               out_channels=out_channels)
-        self.bn2 = nn.BatchNorm2d(3)
+        self.bn2 = nn.BatchNorm2d(out_channels)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         out = self.conv1(x)
@@ -163,8 +164,11 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
         out = self.conv2(out)
         out = self.bn2(out)
+        print(f"downsample: {self.downsample}")
         if self.downsample is not None:
             identity = self.downsample(x)
+        print(f"out shape: {out.shape}")
+        print(f"identity shape: {identity.shape}")
         out += identity
         out = self.relu(out)
         return  out
@@ -199,9 +203,9 @@ class ResNet18(nn.Module):
         self.bn1 = nn.BatchNorm2d(self.in_channels)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 3,  32, layers[0])
-        self.layer2 = self._make_layer(block, 32,  64, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 64, 112, layers[2], stride=2)
+        self.layer1 = self._make_layer(block, 3,  32, layers[0], downsample=1)
+        self.layer2 = self._make_layer(block, 32,  64, layers[1], stride=2, downsample=1)
+        self.layer3 = self._make_layer(block, 64, 112, layers[2], stride=2, downsample=1)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Sequential(nn.Linear(112*self.expansion, num_classes),
                                 nn.LogSoftmax(dim=1))
@@ -211,16 +215,17 @@ class ResNet18(nn.Module):
         in_channels: int,
         out_channels: int,
         blocks: int,
-        stride: int = 1
-    ) -> nn.Sequential:
+        stride: int = 1,
         downsample = None
-        if stride != 1:
+    ) -> nn.Sequential:
+        if downsample:
             """
             This should pass from `layer2` to `layer4` or 
             when building ResNets50 and above. Section 3.3 of the paper
             Deep Residual Learning for Image Recognition
             (https://arxiv.org/pdf/1512.03385v1.pdf).
             """
+            print(f"make layer out channels: {out_channels}")
             downsample = nn.Sequential(
                 nn.Conv2d(
                     self.in_channels, 
@@ -279,14 +284,14 @@ class my_layer(nn.Module):
         self.register_buffer("filter1", filter1)
         self.register_buffer("filter2", filter2)
         self.register_buffer("filter3", filter3)
-        self.weight1_1 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_1 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
         #self.bias = nn.Parameter(torch.Tensor(1))
         nn.init.xavier_normal_(self.weight1_1)
         nn.init.xavier_normal_(self.weight1_2)
         nn.init.xavier_normal_(self.weight1_3)
-        self.bn01 = nn.BatchNorm2d(3)
+        self.bn01 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         self.filter_1 = filter1.to(device)
         self.filter_2 = filter2.to(device)
@@ -297,6 +302,7 @@ class my_layer(nn.Module):
         self.kernel1_1 = torch.einsum("ijk, klm -> ijlm", self.weight1_1, self.filter_1)
         self.kernel1_2 = torch.einsum("ijk, klm -> ijlm", self.weight1_2, self.filter_2)
         self.kernel1_3 = torch.einsum("ijk, klm -> ijlm", self.weight1_3, self.filter_3)
+        print(f"X shape before : {x.shape}")
         print(f"Weight: {(self.kernel1_1+self.kernel1_2+self.kernel1_3).shape}\n X: {x.shape}")
         x = F.conv2d(x, weight=self.kernel1_1+self.kernel1_2+self.kernel1_3, padding=1)
         print(f"X shape: {x.shape}")
