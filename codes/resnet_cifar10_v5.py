@@ -150,12 +150,12 @@ class BasicBlock(nn.Module):
         self.downsample = downsample
         self.conv1 = my_layer(in_channels=in_channels,
                               out_channels=out_channels)
-
-        self.bn1 = nn.BatchNorm2d(out_channels)
+        print(f"In channels: {in_channels}")
+        self.bn1 = nn.BatchNorm2d(3)
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = my_layer(in_channels=in_channels,
+        self.conv2 = my_layer(in_channels=out_channels,
                               out_channels=out_channels)
-        self.bn2 = nn.BatchNorm2d(out_channels*self.expansion)
+        self.bn2 = nn.BatchNorm2d(3)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         out = self.conv1(x)
@@ -279,14 +279,14 @@ class my_layer(nn.Module):
         self.register_buffer("filter1", filter1)
         self.register_buffer("filter2", filter2)
         self.register_buffer("filter3", filter3)
-        self.weight1_1 = nn.Parameter(torch.Tensor(128, in_channels, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(128, in_channels, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(128, in_channels, 1))
+        self.weight1_1 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(3, 3, 1))
         #self.bias = nn.Parameter(torch.Tensor(1))
         nn.init.xavier_normal_(self.weight1_1)
         nn.init.xavier_normal_(self.weight1_2)
         nn.init.xavier_normal_(self.weight1_3)
-        self.bn01 = nn.BatchNorm2d(out_channels)
+        self.bn01 = nn.BatchNorm2d(3)
         self.relu = nn.ReLU(inplace=True)
         self.filter_1 = filter1.to(device)
         self.filter_2 = filter2.to(device)
@@ -299,6 +299,7 @@ class my_layer(nn.Module):
         self.kernel1_3 = torch.einsum("ijk, klm -> ijlm", self.weight1_3, self.filter_3)
         print(f"Weight: {(self.kernel1_1+self.kernel1_2+self.kernel1_3).shape}\n X: {x.shape}")
         x = F.conv2d(x, weight=self.kernel1_1+self.kernel1_2+self.kernel1_3, padding=1)
+        print(f"X shape: {x.shape}")
         x = self.bn01(x)
         x = self.relu(x)
         return x
