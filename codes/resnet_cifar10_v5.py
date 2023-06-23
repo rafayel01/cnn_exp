@@ -286,15 +286,9 @@ class my_layer(nn.Module):
         self.register_buffer("filter1", filter1)
         self.register_buffer("filter2", filter2)
         self.register_buffer("filter3", filter3)
-<<<<<<< HEAD
-        self.weight1_1 = nn.Parameter(torch.Tensor(in_channels, in_channels, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(in_channels, in_channels, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(in_channels, in_channels, 1))
-=======
-        self.weight1_1 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(out_channels, in_channels, 1))
->>>>>>> abd8fc1f60d53b4aceed8a02d8a52b8d05ec2918
+        self.weight1_1 = nn.Parameter(torch.Tensor(out_channels, out_channels, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(out_channels, out_channels, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(out_channels, out_channels, 1))
         #self.bias = nn.Parameter(torch.Tensor(1))
         nn.init.xavier_normal_(self.weight1_1)
         nn.init.xavier_normal_(self.weight1_2)
