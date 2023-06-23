@@ -153,15 +153,17 @@ class BasicBlock(nn.Module):
 
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv1 = my_layer(in_channels=in_channels,
+        self.conv2 = my_layer(in_channels=out_channels,
                               out_channels=out_channels)
         self.bn2 = nn.BatchNorm2d(out_channels*self.expansion)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         identity = x
         out = self.conv1(x)
+        print("after conv1 shape: {out.shape}")
         out = self.bn1(out)
         out = self.relu(out)
         out = self.conv2(out)
+        print("after conv2 shape: {out.shape}")
         out = self.bn2(out)
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -278,9 +280,9 @@ class my_layer(nn.Module):
         self.register_buffer("filter1", filter1)
         self.register_buffer("filter2", filter2)
         self.register_buffer("filter3", filter3)
-        self.weight1_1 = nn.Parameter(torch.Tensor(128, in_channels, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(128, in_channels, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(128, in_channels, 1))
+        self.weight1_1 = nn.Parameter(torch.Tensor(in_channels, in_channels, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(in_channels, in_channels, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(in_channels, in_channels, 1))
         #self.bias = nn.Parameter(torch.Tensor(1))
         nn.init.xavier_normal_(self.weight1_1)
         nn.init.xavier_normal_(self.weight1_2)
