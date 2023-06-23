@@ -148,6 +148,8 @@ class BasicBlock(nn.Module):
         # It is 1 for ResNet18 and ResNet34.
         self.expansion = expansion
         self.downsample = downsample
+        print(f"Basic block in channels: {in_channels}")
+        print(f"Basic block out channels: {out_channels}")
         self.conv1 = nn.Conv2d(
             in_channels, 
             out_channels, 
@@ -175,6 +177,8 @@ class BasicBlock(nn.Module):
         out = self.bn2(out)
         if self.downsample is not None:
             identity = self.downsample(x)
+        print(f"out shape: {out.shape}")
+        print(f"identity shape: {identity.shape}")
         out += identity
         out = self.relu(out)
         return  out
@@ -256,14 +260,21 @@ class ResNet18(nn.Module):
             ))
         return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        print(f"x shape before conv1: {x.shape}")
         x = self.conv1(x)
+        print(f"x shape after conv1: {x.shape}")
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
+        print(f"x shape after maxpool: {x.shape}")
         x = self.layer1(x)
+        print(f"x shape after layer1: {x.shape}")
         x = self.layer2(x)
+        print(f"x shape after layer2: {x.shape}")
         x = self.layer3(x)
+        print(f"x shape after layer3: {x.shape}")
         x = self.layer4(x)
+        print(f"x shape after layer4: {x.shape}")
         # The spatial dimension of the final layer's feature 
         # map should be (7, 7) for all ResNets.
         #print('Dimensions of the last convolutional feature map: ', x.shape)
@@ -838,7 +849,7 @@ model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_original,) # model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     print(f"{model._get_name()}: {parameter_count(model)}")
@@ -855,15 +866,15 @@ for model in models:
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_best.pt')
+    #torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_best.pt')
     model_cable_eq_dict ={}
     model_cable_eq_dict['train_loss']=cable_eq_tr_loss
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{str(model._get_name())}_bn.pkl', 'wb') as fp:
-        pickle.dump(model_cable_eq_dict, fp)
-        print('dictionary saved successfully to file')
+    #with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+    #    pickle.dump(model_cable_eq_dict, fp)
+    #    print('dictionary saved successfully to file')
 
 
 
