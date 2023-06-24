@@ -14,6 +14,7 @@ from torch.utils.data import random_split
 from torchvision import transforms
 from torchsummary import summary
 import pickle
+from torch.utils.data.sampler import SubsetRandomSampler
 
 def imshow(img):
     img = img / 2 + 0.5     # unnormalize
@@ -51,7 +52,19 @@ transform_test = transforms.Compose([
 batch_size = 128
 
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+valset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_test)
+valid_size = 0.2
+num_train = len(trainset)
+indices = list(range(num_train))
+split = int(np.floor(valid_size * num_train))
+np.random.seed(42)
+np.random.shuffle(indices)
+train_idx, valid_idx = indices[split:], indices[:split]
+train_sampler = SubsetRandomSampler(train_idx)
+valid_sampler = SubsetRandomSampler(valid_idx)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, sampler=train_sampler,
+                                          shuffle=True, num_workers=2, pin_memory=True)
+valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, sampler=valid_sampler,
                                           shuffle=True, num_workers=2, pin_memory=True)
 
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
@@ -111,7 +124,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
       correct_t=0
       with torch.no_grad():
           model.eval()
-          for data_t, target_t in (testloader):
+          for data_t, target_t in (valloader):
               data_t, target_t = data_t.to(device), target_t.to(device)
               outputs_t = model(data_t)
               loss_t = criterion(outputs_t, target_t)
@@ -120,7 +133,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
               correct_t += torch.sum(pred_t==target_t).item()
               total_t += target_t.size(0)
           val_acc.append(100 * correct_t/total_t)
-          val_loss.append(batch_loss/len(testloader))
+          val_loss.append(batch_loss/len(valloader))
           network_learned = batch_loss < valid_loss_min
           print(f'validation loss: {np.mean(val_loss):.4f}, validation acc: {(100 * correct_t/total_t):.4f}\n')
 
@@ -129,7 +142,24 @@ def training(model, n_epochs, optimizer, criterion, sched):
               valid_loss_min = batch_loss
               torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_bst.pt')
               print('Improvement-Detected, save-model')
-      model.train()
+          model.train()
+  test_loss = 0
+  total_test_t=0
+  correct_test_t=0
+  with torch.no_grad():
+    model.eval()
+    for data_t, target_t in (testloader):
+        data_t, target_t = data_t.to(device), target_t.to(device)
+        outputs_t = model(data_t)
+        loss_t = criterion(outputs_t, target_t)
+        test_loss += loss_t.item()
+        _,pred_t = torch.max(outputs_t, dim=1)
+        correct_test_t += torch.sum(pred_t==target_t).item()
+        total_test_t += target_t.size(0)
+    test_acc = (100 * correct_test_t/total_test_t)
+    print(f'Test loss: {(test_loss):.4f}, Test acc: {(100 * correct_test_t/total_test_t):.4f}\n')
+  with open("PATH", 'w') as f:
+      f.write(f'Test loss: {(test_loss):.4f}, Test acc: {(100 * correct_test_t/total_test_t):.4f}\n')
   return train_loss, train_acc, val_loss, val_acc
 
 from typing import Type
