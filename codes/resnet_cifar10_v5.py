@@ -125,10 +125,10 @@ def training(model, n_epochs, optimizer, criterion, sched):
           print(f'validation loss: {np.mean(val_loss):.4f}, validation acc: {(100 * correct_t/total_t):.4f}\n')
 
           
-          if network_learned:
-              valid_loss_min = batch_loss
-              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_bst.pt')
-              print('Improvement-Detected, save-model')
+          #if network_learned:
+          #    valid_loss_min = batch_loss
+          #    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_bst.pt')
+          #    print('Improvement-Detected, save-model')
       model.train()
   return train_loss, train_acc, val_loss, val_acc
 
@@ -829,7 +829,7 @@ for model in models:
 for model in models:
     valid_loss_min = np.Inf
     n_epochs = 100
-    max_lr = 0.5
+    max_lr = 0.1
     grad_clip = 0.1
     weight_decay = 1e-4
     optimizer = torch.optim.SGD(params=model.parameters(), lr=0.5, weight_decay=weight_decay, momentum=0.9)
