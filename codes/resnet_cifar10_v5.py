@@ -199,11 +199,19 @@ class ResNet18(nn.Module):
         self.bn1 = nn.BatchNorm2d(self.in_channels)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 3,  32, layers[0], stride=2, downsample=1)
+        self.layer1 = self._make_layer(block, 3,  32, layers[0], downsample=1)
         self.layer2 = self._make_layer(block, 32,  64, layers[1], stride=2, downsample=1)
-        self.layer3 = self._make_layer(block, 64, 112, layers[2], stride=2, downsample=1)
+        self.layer3 = self._make_layer(block, 64, 128, layers[2], stride=2, downsample=1)
+        self.conv_last = nn.Conv2d(
+            in_channels=128,
+            out_channels=256,
+            kernel_size=3, 
+            stride=2,
+            padding=1,
+            bias=False
+        )
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(112*self.expansion, num_classes),
+        self.fc = nn.Sequential(nn.Linear(256*self.expansion, num_classes),
                                 nn.LogSoftmax(dim=1))
     def _make_layer(
         self, 
