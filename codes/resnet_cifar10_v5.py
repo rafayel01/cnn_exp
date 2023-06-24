@@ -266,6 +266,7 @@ class ResNet18(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.conv_last(x)
         # The spatial dimension of the final layer's feature 
         # map should be (7, 7) for all ResNets.
         #print('Dimensions of the last convolutional feature map: ', x.shape)
