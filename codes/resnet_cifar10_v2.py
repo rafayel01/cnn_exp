@@ -63,9 +63,9 @@ train_idx, valid_idx = indices[split:], indices[:split]
 train_sampler = SubsetRandomSampler(train_idx)
 valid_sampler = SubsetRandomSampler(valid_idx)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, sampler=train_sampler,
-                                          shuffle=True, num_workers=2, pin_memory=True)
+                                          num_workers=2, pin_memory=True)
 valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, sampler=valid_sampler,
-                                          shuffle=True, num_workers=2, pin_memory=True)
+                                          num_workers=2, pin_memory=True)
 
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
@@ -140,7 +140,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
           
           if network_learned:
               valid_loss_min = batch_loss
-              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_bst.pt')
+              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_2/{model._get_name()}_bst.pt')
               print('Improvement-Detected, save-model')
           model.train()
   test_loss = 0
@@ -158,7 +158,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
         total_test_t += target_t.size(0)
     test_acc = (100 * correct_test_t/total_test_t)
     print(f'Test loss: {(test_loss):.4f}, Test acc: {(100 * correct_test_t/total_test_t):.4f}\n')
-  with open("PATH", 'w') as f:
+  with open(f"/home/rafayel.veziryan/cnn_exp/results/cifar10_2/{model._get_name()}_test_results.txt", 'w') as f:
       f.write(f'Test loss: {(test_loss):.4f}, Test acc: {(100 * correct_test_t/total_test_t):.4f}\n')
   return train_loss, train_acc, val_loss, val_acc
 
@@ -381,7 +381,7 @@ class ResNet18_with_cable_eq_v2(nn.Module):
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
         self.mylayer_1 = my_layer(img_channels=img_channels)
-        self.mylayer_2 = my_layer(img_channels=img_channels)
+        #self.mylayer_2 = my_layer(img_channels=img_channels)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -1329,16 +1329,16 @@ class ResNet18_with_cable_eq_5(nn.Module):
 
 model_original = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq = ResNet18_with_cable_eq_v2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_cable_eq, )#, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+models = (model_original, model_cable_eq,  model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     print(f"{model._get_name()}: {parameter_count(model)}")
 
-print(model_cable_eq)
+
 # Printing images, before and after my layers
 '''
 imgs = next(iter(trainloader))
@@ -1357,26 +1357,25 @@ imshow(torchvision.utils.make_grid(after_f1))
 classes = trainset.classes
 print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
 #####################
-
+'''
 
 for model in models:
     valid_loss_min = np.Inf
     n_epochs = 100
-    max_lr = 0.5
+    max_lr = 0.1
     grad_clip = 0.1
     weight_decay = 1e-4
-    optimizer = torch.optim.SGD(params=model.parameters(), lr=0.5, weight_decay=weight_decay, momentum=0.9)
+    optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, weight_decay=weight_decay, momentum=0.9)
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    #torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_best.pt')
+    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_2/{model._get_name()}_best.pt')
     model_cable_eq_dict ={}
     model_cable_eq_dict['train_loss']=cable_eq_tr_loss
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    #with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{str(model._get_name())}_bn.pkl', 'wb') as fp:
-    #    pickle.dump(model_cable_eq_dict, fp)
-    #    print('dictionary saved successfully to file')
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_2/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+        pickle.dump(model_cable_eq_dict, fp)
+        print('dictionary saved successfully to file')
 
-'''
