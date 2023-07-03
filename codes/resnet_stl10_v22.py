@@ -51,8 +51,8 @@ transform_test = transforms.Compose([
 ])
 batch_size = 128
 
-trainset = torchvision.datasets.STL10(root='./data', train=True, download=True, transform=transform_train)
-valset = torchvision.datasets.STL10(root='./data', train=True, download=True, transform=transform_test)
+trainset = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform_train)
+valset = torchvision.datasets.STL10(root='./data', split='train', download=True, transform=transform_test)
 valid_size = 0.2
 num_train = len(trainset)
 indices = list(range(num_train))
@@ -67,7 +67,7 @@ trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, sampl
 valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, sampler=valid_sampler,
                                           num_workers=2, pin_memory=True)
 
-testset = torchvision.datasets.STL10(root='./data', train=False, download=True, transform=transform_test)
+testset = torchvision.datasets.STL10(root='./data', split='test', download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
                                          shuffle=False, num_workers=2, pin_memory=True)
 
