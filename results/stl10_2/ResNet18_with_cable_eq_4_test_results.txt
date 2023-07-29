@@ -1,0 +1,1 @@
+Test loss: 145.9994, Test acc: 34.4250
