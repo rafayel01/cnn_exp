@@ -136,7 +136,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
           val_loss.append(batch_loss/len(valloader))
           network_learned = batch_loss < valid_loss_min
           print(f'validation loss: {np.mean(val_loss):.4f}, validation acc: {(100 * correct_t/total_t):.4f}\n')
-
+            
           
           if network_learned:
               valid_loss_min = batch_loss

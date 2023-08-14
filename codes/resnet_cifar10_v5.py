@@ -814,12 +814,12 @@ class ResNet18_with_cable_eq_5(nn.Module):
         return x
 
 model_original = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-##model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-#model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_original, ) #, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
+models = (model_original, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     print(f"{model._get_name()}: {parameter_count(model)}")
