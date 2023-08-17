@@ -413,7 +413,7 @@ class ResNet18(nn.Module):
     
 
 model_original = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_original) #, model_cable_eq,  model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_original, ) #, model_cable_eq,  model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 for model in models:
     print(f"{model._get_name()}: {parameter_count(model)}")

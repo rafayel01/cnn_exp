@@ -12,36 +12,67 @@ import torchvision.transforms as tt
 from torch.utils.data import random_split
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
-
+from torchvision import transforms
+import torch
+import torchvision
+import numpy as np
+import matplotlib.pyplot as plt
+import torch.nn as nn
+import torch.nn.functional as F
+from torchvision.models import resnet18
+from torchvision.datasets import CIFAR10
+from torchvision.transforms import ToTensor
+from torchvision.utils import make_grid
+from torch.utils.data.dataloader import DataLoader
+from torch.utils.data import random_split
+# %matplotlib inline
+from torchvision import transforms
+from torchsummary import summary
+import pickle
+from torch.utils.data.sampler import SubsetRandomSampler
 
 # Dowload the dataset
-dataset_url = "http://files.fast.ai/data/cifar10.tgz"
-download_url(dataset_url, '.')
+#dataset_url = "http://files.fast.ai/data/cifar10.tgz"
+#download_url(dataset_url, '.')
 
 # Extract from archive
-with tarfile.open('./cifar10.tgz', 'r:gz') as tar:
-    tar.extractall(path='./data')
-    
-# Look into the data directory
-data_dir = './data/cifar10'
-print(os.listdir(data_dir))
-classes = os.listdir(data_dir + "/train")
-print(classes)
+#with tarfile.open('./cifar10.tgz', 'r:gz') as tar:
+#    tar.extractall(path='./data')
 
-stats = ((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-train_tfms = tt.Compose([tt.RandomCrop(32, padding=4, padding_mode='reflect'), 
-                         tt.RandomHorizontalFlip(), 
-                         tt.ToTensor(), 
-                         tt.Normalize(*stats,inplace=True)])
-valid_tfms = tt.Compose([tt.ToTensor(), tt.Normalize(*stats)])
+transform_train = transforms.Compose(
+    [transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
+     transforms.RandomHorizontalFlip(),
+     transforms.ToTensor(),
+     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010),inplace=True)])
+transform_test = transforms.Compose([
+    transforms.ToTensor(),
+     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010),inplace=True)
+])
+
+
+trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
+testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+# Look into the data directory
+#data_dir = './data'
+#print(os.listdir(data_dir))
+#classes = os.listdir(data_dir + "/train")
+
+#print(classes)
+
 
 # PyTorch datasets
-train_ds = ImageFolder(data_dir+'/train', train_tfms)
-valid_ds = ImageFolder(data_dir+'/test', valid_tfms)
+#train_ds = ImageFolder(data_dir+'/train', train_tfms)
+#valid_ds = ImageFolder(data_dir+'/test', valid_tfms)
 
 batch_size = 400
-train_dl = DataLoader(train_ds, batch_size, shuffle=True, num_workers=3, pin_memory=True)
-valid_dl = DataLoader(valid_ds, batch_size*2, num_workers=3, pin_memory=True)
+#train_dl = DataLoader(train_ds, batch_size, shuffle=True, num_workers=3, pin_memory=True)
+#valid_dl = DataLoader(valid_ds, batch_size*2, num_workers=3, pin_memory=True)
+
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, sampler=trainset,
+                                          num_workers=2, pin_memory=True)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
+                                         shuffle=False, num_workers=2, pin_memory=True)
+
 
 def show_batch(dl):
     for images, labels in dl:
@@ -81,8 +112,8 @@ class DeviceDataLoader():
 device = get_default_device()
 
 
-train_dl = DeviceDataLoader(train_dl, device)
-valid_dl = DeviceDataLoader(valid_dl, device)
+train_dl = DeviceDataLoader(trainloader, device)
+valid_dl = DeviceDataLoader(testloader, device)
 
 class SimpleResidualBlock(nn.Module):
     def __init__(self):

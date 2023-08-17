@@ -49,38 +49,38 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
 
-classes = trainset.classes
+#classes = trainset.classes
 
-dataiter = iter(trainloader)
-images, labels = dataiter.next()
+#dataiter = iter(trainloader)
+#images, labels = dataiter.next()
 
 # show images
-imshow(torchvision.utils.make_grid(images))
+#imshow(torchvision.utils.make_grid(images))
 # print labels
-print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
+#print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
 
-dataset_size = len(trainset)
+#dataset_size = len(trainset)
 
-x = []
-for i in range(dataset_size):
-    x.append(trainset[i][1])
-uimg = torch.tensor(x).unique(sorted=True)
-uimg_count = torch.stack([(torch.tensor(x)==i).sum() for i in uimg])
-for i in range(len(uimg)):
-    print(f'{trainset.classes[i]}: {uimg_count[i].item()} count')
+#x = []
+#for i in range(dataset_size):
+#    x.append(trainset[i][1])
+#uimg = torch.tensor(x).unique(sorted=True)
+#uimg_count = torch.stack([(torch.tensor(x)==i).sum() for i in uimg])
+#for i in range(len(uimg)):
+#    print(f'{trainset.classes[i]}: {uimg_count[i].item()} count')
 
-plt.style.use('ggplot')
+#plt.style.use('ggplot')
 
-x_pos = [i for i, _ in enumerate(classes)]
+#x_pos = [i for i, _ in enumerate(classes)]
 
-plt.bar(classes, uimg_count, color='blue')
-plt.xlabel("Classes")
-plt.ylabel("Count of images")
-plt.title("Cifar 10 dataset")
+#plt.bar(classes, uimg_count, color='blue')
+#plt.xlabel("Classes")
+#plt.ylabel("Count of images")
+#plt.title("Cifar 10 dataset")
 
-plt.xticks(x_pos, classes,rotation = 45)
+#plt.xticks(x_pos, classes,rotation = 45)
 
-plt.show()
+#plt.show()
 
 def get_default_device():
     """Pick GPU if available, else CPU"""
@@ -449,7 +449,7 @@ model_parabolic_1 = to_device(ResNet9_par(3, 10), device)
 model_parabolic_2 = to_device(ResNet9_par_2(3, 10), device)
 model_parabolic_3 = to_device(ResNet9_par_3(3, 10), device)
 model_parabolic_4 = to_device(ResNet9_par_4(3, 10), device)
-model_parabolic_5 = to_device(ResNet9_par_5(3, 10))
+model_parabolic_5 = to_device(ResNet9_par_5(3, 10), device)
 
 models = (model_original, model_parabolic_1, model_parabolic_2, model_parabolic_3, model_parabolic_4, model_parabolic_5)
 history_original = [evaluate(model_original, test_dl)]
@@ -459,7 +459,7 @@ history_parabolic_3 = [evaluate(model_parabolic_3, test_dl)]
 history_parabolic_4 = [evaluate(model_parabolic_4, test_dl)]
 history_parabolic_5 = [evaluate(model_parabolic_5, test_dl)]
 
-histories  = (history_original, history_parabolic_1, history_parabolic_2, history_parabolic_3, history_parabolic_4, history_parabolic_5)
+histories  = [history_original, history_parabolic_1, history_parabolic_2, history_parabolic_3, history_parabolic_4, history_parabolic_5]
 import pickle
 
 epochs = 100
@@ -470,7 +470,7 @@ opt_func = torch.optim.Adam
 
 
 for model in models:
-    parameter_count(model)
+    print(parameter_count(model))
 
 
 for ind, model in enumerate(models):
@@ -479,8 +479,7 @@ for ind, model in enumerate(models):
                              weight_decay=weight_decay,
                              opt_func=opt_func)
 
-    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_bst.pt')
-    with open('outfile', 'wb') as fp:
-        pickle.dump(model, fp)
-
-
+    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_bst.pt')
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
+        pickle.dump(histories, fp)
+        print('History saved successfully to file')
