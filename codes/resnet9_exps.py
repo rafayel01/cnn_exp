@@ -460,6 +460,7 @@ history_parabolic_4 = [evaluate(model_parabolic_4, test_dl)]
 history_parabolic_5 = [evaluate(model_parabolic_5, test_dl)]
 
 histories  = [history_original, history_parabolic_1, history_parabolic_2, history_parabolic_3, history_parabolic_4, history_parabolic_5]
+
 import pickle
 
 epochs = 100
