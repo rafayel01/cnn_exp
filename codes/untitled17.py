@@ -393,6 +393,8 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
                   weight_decay=0, grad_clip=None, opt_func=torch.optim.SGD):
     torch.cuda.empty_cache()
     history = []
+    loss_lst = []
+    acc_lst = []
 
     optimizer = opt_func(model.parameters(), max_lr, weight_decay=weight_decay)
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=epochs, steps_per_epoch=len(train_loader))
@@ -423,6 +425,8 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
         # Validation phase
         model.eval()
         loss, acc = evaluate(model, val_loader)
+        loss_lst.append(loss)
+        acc_lst.append(acc)
         result = {'val_loss': loss, 'val_acc': acc}
         result['train_loss'] = torch.stack(train_losses).mean().item()
         result['lrs'] = lrs
@@ -432,7 +436,7 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
         #    best_accuracy = history_original[-1]['val_acc']
             #torch.save(model, f'/content/drive/MyDrive/diplom_experiments/best_{model}_original.pth')
             #torch.save(model.state_dict(), f'/content/drive/MyDrive/diplom_experiments/{model}_original_parameters.pth')
-    return loss, acc
+    return loss_lst, acc_lst
 
 model_original = to_device(ResNet9(3, 10),  device)
 model_parabolic_1 = to_device(ResNet9_par(3, 10), device)
@@ -494,8 +498,8 @@ for ind, model in enumerate(models):
                              grad_clip=grad_clip,
                              weight_decay=weight_decay,
                              opt_func=opt_func)
-    histories[ind]['val_loss'].append(model_loss)
-    histories[ind]['val_acc'].append(model_acc)
+    histories[ind]['val_loss'].extend(model_loss)
+    histories[ind]['val_acc'].extend(model_acc)
     torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_bst.pt')
 
 with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
