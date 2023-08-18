@@ -389,7 +389,7 @@ def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
 
-def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
+def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
                   weight_decay=0, grad_clip=None, opt_func=torch.optim.SGD):
     torch.cuda.empty_cache()
     history = []
@@ -424,10 +424,10 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
 
         # Validation phase
         model.eval()
-        loss, acc = evaluate(model, val_loader)
-        loss_lst.append(loss)
-        acc_lst.append(acc)
-        result = {'val_loss': loss, 'val_acc': acc}
+        val_loss, val_acc = evaluate(model, val_loader)
+        loss_lst.append(val_loss)
+        acc_lst.append(val_acc)
+        result = {'val_loss': val_loss, 'val_acc': val_acc}
         result['train_loss'] = torch.stack(train_losses).mean().item()
         result['lrs'] = lrs
         model.epoch_end(epoch, result)
@@ -436,6 +436,9 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
         #    best_accuracy = history_original[-1]['val_acc']
             #torch.save(model, f'/content/drive/MyDrive/diplom_experiments/best_{model}_original.pth')
             #torch.save(model.state_dict(), f'/content/drive/MyDrive/diplom_experiments/{model}_original_parameters.pth')
+    test_loss, test_acc = evaluate(model, test_loader)
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_test_results.txt', 'w') as f:
+        f.write(f'Model: {model.__get_name()} \n Test Loss: {test_loss} \n Test Accuracy: {test_acc}')
     return loss_lst, acc_lst
 
 model_original = to_device(ResNet9(3, 10),  device)
@@ -444,6 +447,7 @@ model_parabolic_2 = to_device(ResNet9_par_2(3, 10), device)
 model_parabolic_3 = to_device(ResNet9_par_3(3, 10), device)
 model_parabolic_4 = to_device(ResNet9_par_4(3, 10), device)
 model_parabolic_5 = to_device(ResNet9_par_5(3, 10), device)
+
 
 models = (model_original, model_parabolic_1, model_parabolic_2, model_parabolic_3, model_parabolic_4, model_parabolic_5)
 history_original = {'val_loss': [], 'val_acc': []} #
@@ -494,7 +498,7 @@ for model in models:
 
 
 for ind, model in enumerate(models):
-    model_loss, model_acc = fit_one_cycle(epochs, max_lr, model_original, train_dl, val_dl,
+    model_loss, model_acc = fit_one_cycle(epochs, max_lr, model, train_dl, val_dl, test_dl,
                              grad_clip=grad_clip,
                              weight_decay=weight_decay,
                              opt_func=opt_func)
@@ -502,9 +506,9 @@ for ind, model in enumerate(models):
     histories[ind]['val_acc'].extend(model_acc)
     torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_bst.pt')
 
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
-        pickle.dump(histories, fp)
-        print('History saved successfully to file')
+with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_all_list.pkl', 'wb') as fp:
+    pickle.dump(histories, fp)
+    print('History saved successfully to file')
 
 
 
