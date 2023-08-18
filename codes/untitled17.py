@@ -502,9 +502,9 @@ for ind, model in enumerate(models):
     histories[ind]['val_acc'].extend(model_acc)
     torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_bst.pt')
 
-with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
-    pickle.dump(histories, fp)
-    print('History saved successfully to file')
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
+        pickle.dump(histories, fp)
+        print('History saved successfully to file')
 
 
 
