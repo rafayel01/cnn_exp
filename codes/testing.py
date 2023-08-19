@@ -404,6 +404,8 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
         model.train()
         train_losses = []
         lrs = []
+        loss_lst = []
+        acc_lst = []
         for batch in train_loader:
             loss = model.training_step(batch)
             train_losses.append(loss)
@@ -425,6 +427,8 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
         # Validation phase
         model.eval()
         val_loss, val_acc = evaluate(model, val_loader)
+        loss_lst.append(val_loss)
+        acc_lst.append(val_acc)
         result = {'val_loss': val_loss, 'val_acc': val_acc}
         result['train_loss'] = torch.stack(train_losses).mean().item()
         result['lrs'] = lrs
@@ -437,7 +441,7 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
     test_loss, test_acc = evaluate(model, test_loader)
     with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_test_results.txt', 'w') as f:
         f.write(f'Model: {model._get_name()} \n Test Loss: {test_loss} \n Test Accuracy: {test_acc}')
-    return val_loss, val_acc
+    return loss_lst, acc_lst
 
 model_original = to_device(ResNet9(3, 10),  device)
 model_parabolic_1 = to_device(ResNet9_par(3, 10), device)
@@ -507,12 +511,12 @@ for ind, model in enumerate(models):
                              grad_clip=grad_clip,
                              weight_decay=weight_decay,
                              opt_func=opt_func)
-    histories[ind]['val_loss'].append(model_loss)
-    histories[ind]['val_acc'].append(model_acc)
+    histories[ind]['val_loss'].extend(model_loss)
+    histories[ind]['val_acc'].extend(model_acc)
     torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_last.pt')
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
-        pickle.dump(histories, fp)
-        print('History saved successfully to file')
+    # with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
+    #     pickle.dump(histories, fp)
+    #     print('History saved successfully to file')
 
 
 with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_all_list.pkl', 'wb') as fp:

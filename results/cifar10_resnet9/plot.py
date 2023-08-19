@@ -1,11 +1,11 @@
 import pickle
 import matplotlib.pyplot as plt
 
-with open('/home/rafayel/cnn_exp/results/cifar10_resnet9/ResNet9_par_5_all_list.pkl', 'rb') as f:
+with open('/home/rafayel/cnn_exp/results/cifar10_resnet9/ResNet9_par_5_list.pkl', 'rb') as f:
     data = pickle.load(f)
 
 
-# print(data[0])
+print(data[0])
 
 length: int = len(data[0]['val_acc'])
 print(length)
