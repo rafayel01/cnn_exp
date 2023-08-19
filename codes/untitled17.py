@@ -438,7 +438,7 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
             #torch.save(model.state_dict(), f'/content/drive/MyDrive/diplom_experiments/{model}_original_parameters.pth')
     test_loss, test_acc = evaluate(model, test_loader)
     with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_test_results.txt', 'w') as f:
-        f.write(f'Model: {model.__get_name()} \n Test Loss: {test_loss} \n Test Accuracy: {test_acc}')
+        f.write(f'Model: {model._get_name()} \n Test Loss: {test_loss} \n Test Accuracy: {test_acc}')
     return loss_lst, acc_lst
 
 model_original = to_device(ResNet9(3, 10),  device)
