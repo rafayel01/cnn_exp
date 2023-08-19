@@ -389,14 +389,14 @@ def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
 
-def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
+def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
                   weight_decay=0, grad_clip=None, opt_func=torch.optim.SGD):
     torch.cuda.empty_cache()
     history = []
 
     optimizer = opt_func(model.parameters(), max_lr, weight_decay=weight_decay)
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=epochs, steps_per_epoch=len(train_loader))
-    best_accuracy = 0.93
+    best_accuracy = 0.9
     for epoch in range(epochs):
         print(f"EPOCH: {epoch}")
         torch.cuda.empty_cache()
@@ -419,22 +419,25 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
             # Record & update learning rate
             lrs.append(get_lr(optimizer))
             sched.step()
-        for ind, par in enumerate(model.parameters()):
-            if ind == 0:
-              print(par)
+        # for ind, par in enumerate(model.parameters()):
+        #     if ind == 0:
+        #       print(par)
         # Validation phase
         model.eval()
-        loss, acc = evaluate(model, val_loader)
-        result = {'val_loss': loss, 'val_acc': acc}
+        val_loss, val_acc = evaluate(model, val_loader)
+        result = {'val_loss': val_loss, 'val_acc': val_acc}
         result['train_loss'] = torch.stack(train_losses).mean().item()
         result['lrs'] = lrs
         model.epoch_end(epoch, result)
         history.append(result)
-        #if  history_original[-1]['val_acc'] > best_accuracy:
-        #    best_accuracy = history_original[-1]['val_acc']
-            #torch.save(model, f'/content/drive/MyDrive/diplom_experiments/best_{model}_original.pth')
-            #torch.save(model.state_dict(), f'/content/drive/MyDrive/diplom_experiments/{model}_original_parameters.pth')
-    return loss, acc
+        if  val_acc > best_accuracy:
+            best_accuracy = val_acc
+            torch.save(model, f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_bst.pth')
+            torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_parameters.pth')
+    test_loss, test_acc = evaluate(model, test_loader)
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_test_results.txt', 'w') as f:
+        f.write(f'Model: {model._get_name()} \n Test Loss: {test_loss} \n Test Accuracy: {test_acc}')
+    return val_loss, val_acc
 
 model_original = to_device(ResNet9(3, 10),  device)
 model_parabolic_1 = to_device(ResNet9_par(3, 10), device)
@@ -443,29 +446,29 @@ model_parabolic_3 = to_device(ResNet9_par_3(3, 10), device)
 model_parabolic_4 = to_device(ResNet9_par_4(3, 10), device)
 model_parabolic_5 = to_device(ResNet9_par_5(3, 10), device)
 
-models = (model_parabolic_1, model_parabolic_2, model_parabolic_3, model_parabolic_4, model_parabolic_5)
+models = (model_original, model_parabolic_1, model_parabolic_2, model_parabolic_3, model_parabolic_4, model_parabolic_5)
 history_original = {'val_loss': [], 'val_acc': []} #
-history_original_loss, history_original_acc = evaluate(model_original, test_dl)
+history_original_loss, history_original_acc = evaluate(model_original, val_dl)
 history_original["val_loss"].append(history_original_loss)
 history_original["val_acc"].append(history_original_acc)
 history_parabolic_1 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_1_loss, history_parabolic_1_acc = evaluate(model_parabolic_1, test_dl)
+history_parabolic_1_loss, history_parabolic_1_acc = evaluate(model_parabolic_1, val_dl)
 history_parabolic_1["val_loss"].append(history_parabolic_1_loss)
 history_parabolic_1["val_acc"].append(history_parabolic_1_acc)
 history_parabolic_2 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_2_loss, history_parabolic_2_acc = evaluate(model_parabolic_2, test_dl)
+history_parabolic_2_loss, history_parabolic_2_acc = evaluate(model_parabolic_2, val_dl)
 history_parabolic_2["val_loss"].append(history_parabolic_2_loss)
 history_parabolic_2["val_acc"].append(history_parabolic_2_acc)
 history_parabolic_3 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_3_loss, history_parabolic_3_acc = evaluate(model_parabolic_3, test_dl)
+history_parabolic_3_loss, history_parabolic_3_acc = evaluate(model_parabolic_3, val_dl)
 history_parabolic_3["val_loss"].append(history_parabolic_3_loss)
 history_parabolic_3["val_acc"].append(history_parabolic_3_acc)
 history_parabolic_4 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_4_loss, history_parabolic_4_acc = evaluate(model_parabolic_4, test_dl)
+history_parabolic_4_loss, history_parabolic_4_acc = evaluate(model_parabolic_4, val_dl)
 history_parabolic_4["val_loss"].append(history_parabolic_4_loss)
 history_parabolic_4["val_acc"].append(history_parabolic_4_acc)
 history_parabolic_5 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_5_loss, history_parabolic_5_acc = evaluate(model_parabolic_5, test_dl)
+history_parabolic_5_loss, history_parabolic_5_acc = evaluate(model_parabolic_5, val_dl)
 history_parabolic_5["val_loss"].append(history_parabolic_5_loss)
 history_parabolic_5["val_acc"].append(history_parabolic_5_acc)
 # history_original["val_loss"].append(history_original_loss)
@@ -476,14 +479,17 @@ history_parabolic_5["val_acc"].append(history_parabolic_5_acc)
 # history_parabolic_4 = [evaluate(model_parabolic_4, test_dl)]
 # history_parabolic_5 = [evaluate(model_parabolic_5, test_dl)]
 
-parameter_count(model_original)
+#parameter_count(model_original)
 
-!python --version
 
-model_parabolic_1.parameters()
+#model_parabolic_1.parameters()
 
-for par in model_parabolic_1.parameters():
-    print(par)
+# for par in model_parabolic_1.parameters():
+#     print(par)
+
+print(parameter_count(model_original))
+for model in models:
+    print(parameter_count(model))
 
 histories  = [history_original, history_parabolic_1, history_parabolic_2, history_parabolic_3, history_parabolic_4, history_parabolic_5]
 import pickle
@@ -496,21 +502,19 @@ weight_decay = 1e-4
 opt_func = torch.optim.Adam
 
 
-for model in models:
-    print(parameter_count(model))
-
-
 for ind, model in enumerate(models):
-    model_loss, model_acc = fit_one_cycle(epochs, max_lr, model, train_dl, val_dl,
+    model_loss, model_acc = fit_one_cycle(epochs, max_lr, model, train_dl, val_dl, test_dl,
                              grad_clip=grad_clip,
                              weight_decay=weight_decay,
                              opt_func=opt_func)
     histories[ind]['val_loss'].append(model_loss)
     histories[ind]['val_acc'].append(model_acc)
-    #torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_bst.pt')
-    #with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
-        #pickle.dump(histories, fp)
-        #print('History saved successfully to file')
+    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_last.pt')
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_list.pkl', 'wb') as fp:
+        pickle.dump(histories, fp)
+        print('History saved successfully to file')
 
 
-
+with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_all_list.pkl', 'wb') as fp:
+    pickle.dump(histories, fp)
+    print('History saved successfully to file')
