@@ -82,20 +82,22 @@ class DeviceDataLoader():
 
 device = get_default_device()
 trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-valset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_test)
-valid_size = 0.2
-num_train = len(trainset)
-indices = list(range(num_train))
-split = int(np.floor(valid_size * num_train))
-np.random.seed(42)
-np.random.shuffle(indices)
-train_idx, valid_idx = indices[split:], indices[:split]
-train_sampler = SubsetRandomSampler(train_idx)
-valid_sampler = SubsetRandomSampler(valid_idx)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, sampler=train_sampler,
-                                          num_workers=2, pin_memory=True)
-valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, sampler=valid_sampler,
-                                          num_workers=2, pin_memory=True)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                          shuffle=True, num_workers=2, pin_memory=True)
+#valset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_test)
+# valid_size = 0.2
+# num_train = len(trainset)
+# indices = list(range(num_train))
+# split = int(np.floor(valid_size * num_train))
+# np.random.seed(42)
+# np.random.shuffle(indices)
+# train_idx, valid_idx = indices[split:], indices[:split]
+# train_sampler = SubsetRandomSampler(train_idx)
+# valid_sampler = SubsetRandomSampler(valid_idx)
+# trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, sampler=train_sampler,
+#                                           num_workers=2, pin_memory=True)
+#valloader = torch.utils.data.DataLoader(valset, batch_size=batch_size, sampler=valid_sampler,
+#                                          num_workers=2, pin_memory=True)
 
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
@@ -103,7 +105,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
 
 
 train_dl = DeviceDataLoader(trainloader, device)
-val_dl = DeviceDataLoader(valloader, device)
+#val_dl = DeviceDataLoader(valloader, device)
 test_dl = DeviceDataLoader(testloader, device)
 
 def accuracy(outputs, labels):
@@ -390,7 +392,7 @@ def get_lr(optimizer):
     for param_group in optimizer.param_groups:
         return param_group['lr']
 
-def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
+def fit_one_cycle(epochs, max_lr, model, train_loader, test_loader,
                   weight_decay=0, grad_clip=None, opt_func=torch.optim.SGD):
     torch.cuda.empty_cache()
     history = []
@@ -427,7 +429,7 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
         #       print(par)
         # Validation phase
         model.eval()
-        val_loss, val_acc = evaluate(model, val_loader)
+        val_loss, val_acc = evaluate(model, test_loader)
         loss_lst.append(val_loss)
         acc_lst.append(val_acc)
         result = {'val_loss': val_loss, 'val_acc': val_acc}
@@ -439,9 +441,9 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
             best_accuracy = val_acc
             torch.save(model, f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_bst.pth')
             torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_parameters.pth')
-    test_loss, test_acc = evaluate(model, test_loader)
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_test_results.txt', 'w') as f:
-        f.write(f'Model: {model._get_name()} \n Test Loss: {test_loss} \n Test Accuracy: {test_acc}')
+    # test_loss, test_acc = evaluate(model, test_loader)
+    # with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_resnet9/{model._get_name()}_test_results.txt', 'w') as f:
+    #     f.write(f'Model: {model._get_name()} \n Test Loss: {test_loss} \n Test Accuracy: {test_acc}')
     return loss_lst, acc_lst
 
 model_original = to_device(ResNet9(3, 10),  device)
@@ -453,27 +455,27 @@ model_parabolic_5 = to_device(ResNet9_par_5(3, 10), device)
 
 models = (model_original, model_parabolic_1, model_parabolic_2, model_parabolic_3, model_parabolic_4, model_parabolic_5)
 history_original = {'val_loss': [], 'val_acc': []} #
-history_original_loss, history_original_acc = evaluate(model_original, val_dl)
+history_original_loss, history_original_acc = evaluate(model_original, test_dl)
 history_original["val_loss"].append(history_original_loss)
 history_original["val_acc"].append(history_original_acc)
 history_parabolic_1 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_1_loss, history_parabolic_1_acc = evaluate(model_parabolic_1, val_dl)
+history_parabolic_1_loss, history_parabolic_1_acc = evaluate(model_parabolic_1, test_dl)
 history_parabolic_1["val_loss"].append(history_parabolic_1_loss)
 history_parabolic_1["val_acc"].append(history_parabolic_1_acc)
 history_parabolic_2 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_2_loss, history_parabolic_2_acc = evaluate(model_parabolic_2, val_dl)
+history_parabolic_2_loss, history_parabolic_2_acc = evaluate(model_parabolic_2, test_dl)
 history_parabolic_2["val_loss"].append(history_parabolic_2_loss)
 history_parabolic_2["val_acc"].append(history_parabolic_2_acc)
 history_parabolic_3 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_3_loss, history_parabolic_3_acc = evaluate(model_parabolic_3, val_dl)
+history_parabolic_3_loss, history_parabolic_3_acc = evaluate(model_parabolic_3, test_dl)
 history_parabolic_3["val_loss"].append(history_parabolic_3_loss)
 history_parabolic_3["val_acc"].append(history_parabolic_3_acc)
 history_parabolic_4 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_4_loss, history_parabolic_4_acc = evaluate(model_parabolic_4, val_dl)
+history_parabolic_4_loss, history_parabolic_4_acc = evaluate(model_parabolic_4, test_dl)
 history_parabolic_4["val_loss"].append(history_parabolic_4_loss)
 history_parabolic_4["val_acc"].append(history_parabolic_4_acc)
 history_parabolic_5 = {'val_loss': [], 'val_acc': []} #
-history_parabolic_5_loss, history_parabolic_5_acc = evaluate(model_parabolic_5, val_dl)
+history_parabolic_5_loss, history_parabolic_5_acc = evaluate(model_parabolic_5, test_dl)
 history_parabolic_5["val_loss"].append(history_parabolic_5_loss)
 history_parabolic_5["val_acc"].append(history_parabolic_5_acc)
 # history_original["val_loss"].append(history_original_loss)
@@ -508,7 +510,7 @@ opt_func = torch.optim.Adam
 
 
 for ind, model in enumerate(models):
-    model_loss, model_acc = fit_one_cycle(epochs, max_lr, model, train_dl, val_dl, test_dl,
+    model_loss, model_acc = fit_one_cycle(epochs, max_lr, model, train_dl, test_dl,
                              grad_clip=grad_clip,
                              weight_decay=weight_decay,
                              opt_func=opt_func)

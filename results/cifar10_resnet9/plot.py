@@ -1,11 +1,11 @@
 import pickle
 import matplotlib.pyplot as plt
 
-with open('/home/rafayel/cnn_exp/results/cifar10_resnet9/ResNet9_par_5_list.pkl', 'rb') as f:
+with open('/home/rafayel/cnn_exp/results/cifar10_resnet9/ResNet9_par_5_all_list.pkl', 'rb') as f:
     data = pickle.load(f)
 
 
-print(data[0])
+#print(data)
 
 length: int = len(data[0]['val_acc'])
 print(length)
@@ -17,7 +17,7 @@ def plot(x: list[float], y: list[float]) -> None:
 y = [None for _ in range(6)]
 for i in range(6):
     y[i] = [data[i]['val_acc'][j] * 100 for j in range(101)]
-    print(max(data[i]['val_acc']))
+    print(data[i]['val_acc'][-1])
 
 
 plot(range(length), y[0])
