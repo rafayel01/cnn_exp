@@ -393,7 +393,8 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
                   weight_decay=0, grad_clip=None, opt_func=torch.optim.SGD):
     torch.cuda.empty_cache()
     history = []
-
+    loss_lst = []
+    acc_lst = []
     optimizer = opt_func(model.parameters(), max_lr, weight_decay=weight_decay)
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=epochs, steps_per_epoch=len(train_loader))
     best_accuracy = 0.9
@@ -404,8 +405,7 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader, test_loader,
         model.train()
         train_losses = []
         lrs = []
-        loss_lst = []
-        acc_lst = []
+        
         for batch in train_loader:
             loss = model.training_step(batch)
             train_losses.append(loss)
