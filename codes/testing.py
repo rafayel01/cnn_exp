@@ -196,9 +196,9 @@ class my_layer(nn.Module):
         self.weight1_2 = nn.Parameter(torch.Tensor(3, 3, 1))
         self.weight1_3 = nn.Parameter(torch.Tensor(3, 3, 1))
         #self.bias = nn.Parameter(torch.Tensor(1))
-        nn.init.kaiming_normal_(self.weight1_1)
-        nn.init.kaiming_normal_(self.weight1_2)
-        nn.init.kaiming_normal_(self.weight1_3)
+        nn.init.xavier_normal_(self.weight1_1)
+        nn.init.xavier_normal_(self.weight1_2)
+        nn.init.xavier_normal_(self.weight1_3)
 
         self.bn01 = nn.BatchNorm2d(img_channels)
         self.relu = nn.ReLU(inplace=True)
