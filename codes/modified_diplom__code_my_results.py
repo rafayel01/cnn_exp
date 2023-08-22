@@ -82,6 +82,10 @@ device = get_default_device()
 train_dl = DeviceDataLoader(trainloader, device)
 test_dl = DeviceDataLoader(testloader, device)
 
+def parameter_count(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 def accuracy(outputs, labels):
     _, preds = torch.max(outputs, dim=1)
     return torch.tensor(torch.sum(preds == labels).item() / len(preds))
@@ -105,14 +109,13 @@ class ImageClassificationBase(nn.Module):
         epoch_loss = torch.stack(batch_losses).mean()   # Combine losses
         batch_accs = [x['val_acc'] for x in outputs]
         epoch_acc = torch.stack(batch_accs).mean()      # Combine accuracies
-        return {'val_loss': epoch_loss.item(), 'val_acc': epoch_acc.item()}
+        return  epoch_loss.item(), epoch_acc.item()
 
     def epoch_end(self, epoch, result):
-        print("Epoch [{}], last_lr: {:.5f}, train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
-            epoch + 1, result['lrs'][-1], result['train_loss'], result['val_loss'], result['val_acc']))
+        print("Epoch End")
+                
+    
 
-def parameter_count(model):
-  return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 class my_layer(nn.Module):
     def __init__(self, img_channels) -> None:
@@ -234,6 +237,7 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=epochs, steps_per_epoch=len(train_loader))
     best_accuracy = 0.93
     for epoch in range(epochs):
+        print("Epoch: ", epoch)
         torch.cuda.empty_cache()
         # Training Phase
         model.train()
@@ -273,10 +277,10 @@ def fit_one_cycle(epochs, max_lr, model, train_loader, val_loader,
 
 
 
-model_original = to_device(ResNet9(3, 10),  device)
+#model_original = to_device(ResNet9(3, 10),  device)
 
-history_original = [evaluate(model_original, test_dl)]
-history_original
+#history_original = [evaluate(model_original, test_dl)]
+#history_original
 
 epochs = 100
 max_lr = 0.01
@@ -284,10 +288,7 @@ grad_clip = 0.1
 weight_decay = 1e-4
 opt_func = torch.optim.Adam
 
-history_original += fit_one_cycle(epochs, max_lr, model_original, train_dl, test_dl,
-                             grad_clip=grad_clip,
-                             weight_decay=weight_decay,
-                             opt_func=opt_func)
+#history_original += fit_one_cycle(epochs, max_lr, model_original, train_dl, test_dl, grad_clip=grad_clip, weight_decay=weight_decay, opt_func=opt_func)
 
 model_parabolic_1 = ResNet9_with_parabolic_layers(3, 10)
 model_parabolic_1 = to_device(model_parabolic_1, device)
@@ -296,7 +297,7 @@ history_parabolic_1 = {'val_loss': [], 'val_acc': []} #
 history_parabolic_1_loss, history_parabolic_1_acc = evaluate(model_parabolic_1, test_dl)
 history_parabolic_1["val_loss"].append(history_parabolic_1_loss)
 history_parabolic_1["val_acc"].append(history_parabolic_1_acc)
-
+print(history_parabolic_1)
 model_loss, model_acc = fit_one_cycle(epochs, max_lr, model_parabolic_1, train_dl, test_dl,
                              grad_clip=grad_clip,
                              weight_decay=weight_decay,
