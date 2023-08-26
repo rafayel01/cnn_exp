@@ -127,7 +127,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
           
           if network_learned:
               valid_loss_min = batch_loss
-              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_bst.pt')
+              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5/{model._get_name()}_bst.pt')
               print('Improvement-Detected, save-model')
       model.train()
   return train_loss, train_acc, val_loss, val_acc
@@ -849,7 +849,8 @@ model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_original,) # model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+
 
 for model in models:
     print(f"{model._get_name()}: {parameter_count(model)}")
@@ -866,13 +867,13 @@ for model in models:
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    #torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model._get_name()}_best.pt')
+    #torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5/{model._get_name()}_best.pt')
     model_cable_eq_dict ={}
     model_cable_eq_dict['train_loss']=cable_eq_tr_loss
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    #with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+    #with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5/{str(model._get_name())}_bn.pkl', 'wb') as fp:
     #    pickle.dump(model_cable_eq_dict, fp)
     #    print('dictionary saved successfully to file')
 
@@ -880,21 +881,21 @@ for model in models:
 
 
 # Printing images, before and after my layers
-'''
-imgs = next(iter(trainloader))
-images, labels = imgs[0][:4], imgs[1][:4]
-# show images
-imshow(torchvision.utils.make_grid(images))
-# print labels
-classes = trainset.classes
-print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
+# '''
+# imgs = next(iter(trainloader))
+# images, labels = imgs[0][:4], imgs[1][:4]
+# # show images
+# imshow(torchvision.utils.make_grid(images))
+# # print labels
+# classes = trainset.classes
+# print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
 
-model_cable_eq = model_cable_eq.cpu()
+# model_cable_eq = model_cable_eq.cpu()
 
-after_f1 = model_cable_eq.mylayer_1(images)
-imshow(torchvision.utils.make_grid(after_f1))
-# print labels
-classes = trainset.classes
-print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
-#####################
-'''
+# after_f1 = model_cable_eq.mylayer_1(images)
+# imshow(torchvision.utils.make_grid(after_f1))
+# # print labels
+# classes = trainset.classes
+# print(' '.join(f'{classes[labels[j]]:5s}' for j in range(4)))
+# #####################
+# '''
