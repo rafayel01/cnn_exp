@@ -367,39 +367,17 @@ class ResNet18_with_cable_eq(nn.Module):
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
+        my_block: Type[PDE_Block],
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq, self).__init__()
-        # Initialazing kernels
         
-        
-        # 2nd
-        '''
-        self.register_buffer("filter1", filter1)
-        self.register_buffer("filter2", filter2)
-        self.register_buffer("filter3", filter3)
-        self.weight2_1 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight2_2 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight2_3 = nn.Parameter(torch.Tensor(3, 3, 1))
-        #self.bias = nn.Parameter(torch.Tensor(1))
-        nn.init.xavier_normal_(self.weight2_1)
-        nn.init.xavier_normal_(self.weight2_2)
-        nn.init.xavier_normal_(self.weight2_3)
-        '''
-        #self.bias = nn.Parameter(torch.Tensor(1))
-        #self.bn02 = nn.BatchNorm2d(img_channels)
-
         if num_layers == 18:
-            # The following `layers` list defines the number of `BasicBlock` 
-            # to use to build the network and how many basic blocks to stack
-            # together.
             layers = [2, 2, 2, 2]
             self.expansion = 1
         
         self.in_channels = 64
-        # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
-        # three layers. Here, kernel size is 7.
-        self.mylayer_1 = my_layer(img_channels=img_channels)
+        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -482,6 +460,7 @@ class ResNet18_with_cable_eq_2(nn.Module):
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
+        my_block: Type[PDE_Block],
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq_2, self).__init__()
@@ -497,8 +476,8 @@ class ResNet18_with_cable_eq_2(nn.Module):
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = my_layer(img_channels=img_channels)
-        self.mylayer_2 = my_layer(img_channels=img_channels)
+        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -579,6 +558,7 @@ class ResNet18_with_cable_eq_3(nn.Module):
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
+        my_block: Type[PDE_Block],
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq_3, self).__init__()
@@ -593,9 +573,9 @@ class ResNet18_with_cable_eq_3(nn.Module):
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = my_layer(img_channels=img_channels)
-        self.mylayer_2 = my_layer(img_channels=img_channels)
-        self.mylayer_3 = my_layer(img_channels=img_channels)
+        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_3 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -680,6 +660,7 @@ class ResNet18_with_cable_eq_4(nn.Module):
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
+        my_block: Type[PDE_Block],
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq_4, self).__init__()
@@ -694,10 +675,10 @@ class ResNet18_with_cable_eq_4(nn.Module):
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = my_layer(img_channels=img_channels)
-        self.mylayer_2 = my_layer(img_channels=img_channels)
-        self.mylayer_3 = my_layer(img_channels=img_channels)
-        self.mylayer_4 = my_layer(img_channels=img_channels)
+        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_3 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_4 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -783,6 +764,7 @@ class ResNet18_with_cable_eq_5(nn.Module):
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
+        my_block: Type[PDE_Block],
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq_5, self).__init__()
@@ -797,11 +779,11 @@ class ResNet18_with_cable_eq_5(nn.Module):
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = my_layer(img_channels=img_channels)
-        self.mylayer_2 = my_layer(img_channels=img_channels)
-        self.mylayer_3 = my_layer(img_channels=img_channels)
-        self.mylayer_4 = my_layer(img_channels=img_channels)
-        self.mylayer_5 = my_layer(img_channels=img_channels)
+        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_3 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_4 = self._make_layer(my_block, out_channels=3, block=2)
+        self.mylayer_5 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -882,12 +864,12 @@ class ResNet18_with_cable_eq_5(nn.Module):
         return x
 
 model_original = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
-models = (model_original, ) #model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
+model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
+model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
+model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
+model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
+models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 
 for model in models:

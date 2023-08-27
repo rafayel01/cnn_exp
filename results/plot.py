@@ -1,7 +1,7 @@
 import pickle
 import matplotlib.pyplot as plt
 
-models = ("ResNet18_bn", "ResNet18_with_cable_eq_bn", "ResNet18_with_cable_eq_2_bn", "ResNet18_with_cable_eq_3_bn", "ResNet18_with_cable_eq_4_bn", "ResNet18_with_cable_eq_5_bn")
+models = ("ResNet18_with_cable_eq_bn", "ResNet18_with_cable_eq_2_bn", "ResNet18_with_cable_eq_3_bn", "ResNet18_with_cable_eq_4_bn", "ResNet18_with_cable_eq_5_bn")
 data =[]
 for model in models:
     with open(f'/home/rafayel/cnn_exp/results/cifar10/with_relu_bn/lr_0.5/{model}.pkl', 'rb') as f:
