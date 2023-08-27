@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 models = ("ResNet18_with_cable_eq_bn", "ResNet18_with_cable_eq_2_bn", "ResNet18_with_cable_eq_3_bn", "ResNet18_with_cable_eq_4_bn", "ResNet18_with_cable_eq_5_bn")
 data =[]
 for model in models:
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5_blocks/{model}.pkl', 'rb') as f:
+    with open(f'/home/rafayel/cnn_exp/results/cifar10_lr_0.5_blocks/{model}.pkl', 'rb') as f:
         data.append(pickle.load(f))
 
 length: int = len(data[-1]['test_acc'])
