@@ -127,7 +127,7 @@ def training(model, n_epochs, optimizer, criterion, sched):
           
           if network_learned:
               valid_loss_min = batch_loss
-              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5/{model._get_name()}_bst.pt')
+              torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5_blocks/{model._get_name()}_bst.pt')
               print('Improvement-Detected, save-model')
       model.train()
   return train_loss, train_acc, val_loss, val_acc
@@ -177,11 +177,87 @@ class BasicBlock(nn.Module):
         out = self.bn2(out)
         if self.downsample is not None:
             identity = self.downsample(x)
+        out += identity
+        out = self.relu(out)
+        return  out
+
+
+class my_layer(nn.Module):
+    def __init__(self, img_channels) -> None:
+        super().__init__()
+        filter1 = torch.Tensor([[[0,  1,  0], 
+                                [0, -2,  0],
+                                [0,  1,  0]]])
+        filter2 = torch.Tensor([[[0,  0,  0], 
+                                [1, -2,  1],
+                                [0,  0,  0]]])
+        filter3 = torch.Tensor([[[0,  0,  0], 
+                                 [0,  1,  0],
+                                 [0,  0,  0]]])
+        self.register_buffer("filter1", filter1)
+        self.register_buffer("filter2", filter2)
+        self.register_buffer("filter3", filter3)
+        self.weight1_1 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_2 = nn.Parameter(torch.Tensor(3, 3, 1))
+        self.weight1_3 = nn.Parameter(torch.Tensor(3, 3, 1))
+        #self.bias = nn.Parameter(torch.Tensor(1))
+        nn.init.xavier_normal_(self.weight1_1)
+        nn.init.xavier_normal_(self.weight1_2)
+        nn.init.xavier_normal_(self.weight1_3)
+        self.bn01 = nn.BatchNorm2d(3)
+        self.relu = nn.ReLU(inplace=True)
+        self.filter_1 = filter1.to(device)
+        self.filter_2 = filter2.to(device)
+        self.filter_3 = filter3.to(device)
+
+
+    def forward(self, x:  torch.Tensor) -> torch.Tensor:
+        self.kernel1_1 = torch.einsum("ijk, klm -> ijlm", self.weight1_1, self.filter_1)
+        self.kernel1_2 = torch.einsum("ijk, klm -> ijlm", self.weight1_2, self.filter_2)
+        self.kernel1_3 = torch.einsum("ijk, klm -> ijlm", self.weight1_3, self.filter_3)
+        x = F.conv2d(x, weight=self.kernel1_1+self.kernel1_2+self.kernel1_3, padding=1)
+        x = self.bn01(x)
+        x = self.relu(x)
+        return x
+
+
+class PDE_Block(nn.Module):
+    def __init__(
+        self, 
+        in_channels: int,
+        out_channels: int,
+        stride: int = 1,
+        expansion: int = 1,
+        downsample: nn.Module = None
+    ) -> None:
+        super(PDE_Block, self).__init__()
+
+        # Multiplicative factor for the subsequent conv2d layer's output channels.
+        # It is 1 for ResNet18 and ResNet34.
+        self.expansion = expansion
+        self.downsample = downsample
+        #print(f"Basic block in channels: {in_channels}")
+        #print(f"Basic block out channels: {out_channels}")
+        self.conv1 = my_layer(img_channels=3)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = my_layer(img_channels=3)
+        self.bn2 = nn.BatchNorm2d(out_channels*self.expansion)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        identity = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        if self.downsample is not None:
+            identity = self.downsample(x)
         #print(f"out shape: {out.shape}")
         #print(f"identity shape: {identity.shape}")
         out += identity
         out = self.relu(out)
         return  out
+
 
 class ResNet18(nn.Module):
     def __init__(
@@ -260,228 +336,44 @@ class ResNet18(nn.Module):
             ))
         return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        #print(f"x shape before conv1: {x.shape}")
         x = self.conv1(x)
-        #print(f"x shape after conv1: {x.shape}")
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        #print(f"x shape after maxpool: {x.shape}")
         x = self.layer1(x)
-        #print(f"x shape after layer1: {x.shape}")
         x = self.layer2(x)
-        #print(f"x shape after layer2: {x.shape}")
         x = self.layer3(x)
-        #print(f"x shape after layer3: {x.shape}")
         x = self.layer4(x)
-        #print(f"x shape after layer4: {x.shape}")
-        # The spatial dimension of the final layer's feature 
-        # map should be (7, 7) for all ResNets.
-        #print('Dimensions of the last convolutional feature map: ', x.shape)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x
-
-
-class my_layer(nn.Module):
-    def __init__(self, img_channels) -> None:
-        super().__init__()
-        filter1 = torch.Tensor([[[0,  1,  0], 
-                                [0, -2,  0],
-                                [0,  1,  0]]])
-        filter2 = torch.Tensor([[[0,  0,  0], 
-                                [1, -2,  1],
-                                [0,  0,  0]]])
-        filter3 = torch.Tensor([[[0,  0,  0], 
-                                 [0,  1,  0],
-                                 [0,  0,  0]]])
-        self.register_buffer("filter1", filter1)
-        self.register_buffer("filter2", filter2)
-        self.register_buffer("filter3", filter3)
-        self.weight1_1 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight1_2 = nn.Parameter(torch.Tensor(3, 3, 1))
-        self.weight1_3 = nn.Parameter(torch.Tensor(3, 3, 1))
-        #self.bias = nn.Parameter(torch.Tensor(1))
-        nn.init.xavier_normal_(self.weight1_1)
-        nn.init.xavier_normal_(self.weight1_2)
-        nn.init.xavier_normal_(self.weight1_3)
-        self.bn01 = nn.BatchNorm2d(img_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.filter_1 = filter1.to(device)
-        self.filter_2 = filter2.to(device)
-        self.filter_3 = filter3.to(device)
-
-
-    def forward(self, x:  torch.Tensor) -> torch.Tensor:
-        self.kernel1_1 = torch.einsum("ijk, klm -> ijlm", self.weight1_1, self.filter_1)
-        self.kernel1_2 = torch.einsum("ijk, klm -> ijlm", self.weight1_2, self.filter_2)
-        self.kernel1_3 = torch.einsum("ijk, klm -> ijlm", self.weight1_3, self.filter_3)
-        x = F.conv2d(x, weight=self.kernel1_1+self.kernel1_2+self.kernel1_3, padding=1)
-        x = self.bn01(x)
-        x = self.relu(x)
-        return x
-
-
-class PDE_Block(nn.Module):
-    def __init__(
-        self, 
-        in_channels: int,
-        out_channels: int,
-        stride: int = 1,
-        expansion: int = 1,
-        downsample: nn.Module = None
-    ) -> None:
-        super(BasicBlock, self).__init__()
-
-        # Multiplicative factor for the subsequent conv2d layer's output channels.
-        # It is 1 for ResNet18 and ResNet34.
-        self.expansion = expansion
-        self.downsample = downsample
-        #print(f"Basic block in channels: {in_channels}")
-        #print(f"Basic block out channels: {out_channels}")
-        self.conv1 = my_layer(img_channels=in_channels)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = my_layer(img_channels=in_channels)
-        self.bn2 = nn.BatchNorm2d(out_channels*self.expansion)
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        identity = x
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn2(out)
-        if self.downsample is not None:
-            identity = self.downsample(x)
-        #print(f"out shape: {out.shape}")
-        #print(f"identity shape: {identity.shape}")
-        out += identity
-        out = self.relu(out)
-        return  out
-
 
 class ResNet18_with_cable_eq(nn.Module):
     def __init__(
-        self, 
+        self,
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
-        my_block: Type[PDE_Block],
+        my_block,
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq, self).__init__()
-        
         if num_layers == 18:
-            layers = [2, 2, 2, 2]
-            self.expansion = 1
-        
-        self.in_channels = 64
-        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
-        self.conv1 = nn.Conv2d(
-            in_channels=img_channels,
-            out_channels=self.in_channels,
-            kernel_size=7, 
-            stride=2,
-            padding=3,
-            bias=False
-        )
-        self.bn1 = nn.BatchNorm2d(self.in_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),
-                                nn.LogSoftmax(dim=1))
-    def _make_layer(
-        self, 
-        block: Type[BasicBlock],
-        out_channels: int,
-        blocks: int,
-        stride: int = 1
-    ) -> nn.Sequential:
-        downsample = None
-        if stride != 1:
-            """
-            This should pass from `layer2` to `layer4` or 
-            when building ResNets50 and above. Section 3.3 of the paper
-            Deep Residual Learning for Image Recognition
-            (https://arxiv.org/pdf/1512.03385v1.pdf).
-            """
-            downsample = nn.Sequential(
-                nn.Conv2d(
-                    self.in_channels, 
-                    out_channels*self.expansion,
-                    kernel_size=1,
-                    stride=stride,
-                    bias=False 
-                ),
-                nn.BatchNorm2d(out_channels * self.expansion),
-            )
-        layers = []
-        layers.append(
-            block(
-                self.in_channels, out_channels, stride, self.expansion, downsample
-            )
-        )
-        self.in_channels = out_channels * self.expansion
-        for i in range(1, blocks):
-            layers.append(block(
-                self.in_channels,
-                out_channels,
-                expansion=self.expansion
-            ))
-        return nn.Sequential(*layers)
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.mylayer_1(x)
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
-        x = self.maxpool(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        # The spatial dimension of the final layer's feature 
-        # map should be (7, 7) for all ResNets.
-        #print('Dimensions of the last convolutional feature map: ', x.shape)
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
-        return x
-
-
-class ResNet18_with_cable_eq_2(nn.Module):
-    def __init__(
-        self, 
-        img_channels: int,
-        num_layers: int,
-        block: Type[BasicBlock],
-        my_block: Type[PDE_Block],
-        num_classes: int  = 10
-    ) -> None:
-        super(ResNet18_with_cable_eq_2, self).__init__()
-        # Initialazing kernels
-        
-        if num_layers == 18:
-            # The following `layers` list defines the number of `BasicBlock` 
+            # The following `layers` list defines the number of `BasicBlock`
             # to use to build the network and how many basic blocks to stack
             # together.
             layers = [2, 2, 2, 2]
             self.expansion = 1
         
+        self.my_layer = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
-            kernel_size=7, 
+            kernel_size=7,
             stride=2,
             padding=3,
             bias=False
@@ -494,10 +386,11 @@ class ResNet18_with_cable_eq_2(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),
-                                nn.LogSoftmax(dim=1))
-    def _make_layer(
-        self, 
+        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),nn.LogSoftmax(dim=1))
+    
+
+    def _make_layer_pde(
+        self,
         block: Type[BasicBlock],
         out_channels: int,
         blocks: int,
@@ -506,18 +399,58 @@ class ResNet18_with_cable_eq_2(nn.Module):
         downsample = None
         if stride != 1:
             """
-            This should pass from `layer2` to `layer4` or 
+            This should pass from `layer2` to `layer4` or
             when building ResNets50 and above. Section 3.3 of the paper
             Deep Residual Learning for Image Recognition
             (https://arxiv.org/pdf/1512.03385v1.pdf).
             """
             downsample = nn.Sequential(
                 nn.Conv2d(
-                    self.in_channels, 
+                    self.in_channels,
                     out_channels*self.expansion,
                     kernel_size=1,
                     stride=stride,
-                    bias=False 
+                    bias=False
+                ),
+                nn.BatchNorm2d(out_channels * self.expansion),
+            )
+        layers = []
+        layers.append(
+            block(
+                3, 3, stride, self.expansion, downsample
+            )
+        )
+        self.in_channels = out_channels * self.expansion
+        for i in range(1, blocks):
+            layers.append(block(
+                self.in_channels,
+                out_channels,
+                expansion=self.expansion
+            ))
+        return nn.Sequential(*layers)
+        
+    def _make_layer(
+        self,
+        block: Type[BasicBlock],
+        out_channels: int,
+        blocks: int,
+        stride: int = 1
+    ) -> nn.Sequential:
+        downsample = None
+        if stride != 1:
+            """
+            This should pass from `layer2` to `layer4` or
+            when building ResNets50 and above. Section 3.3 of the paper
+            Deep Residual Learning for Image Recognition
+            (https://arxiv.org/pdf/1512.03385v1.pdf).
+            """
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.in_channels,
+                    out_channels*self.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False
                 ),
                 nn.BatchNorm2d(out_channels * self.expansion),
             )
@@ -536,8 +469,145 @@ class ResNet18_with_cable_eq_2(nn.Module):
             ))
         return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.mylayer_1(x)
-        x = self.mylayer_2(x)
+        x = self.my_layer(x)
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.fc(x)
+        return x
+
+
+
+class ResNet18_with_cable_eq_2(nn.Module):
+    def __init__(
+        self,
+        img_channels: int,
+        num_layers: int,
+        block: Type[BasicBlock],
+        my_block,
+        num_classes: int  = 10
+    ) -> None:
+        super(ResNet18_with_cable_eq_2, self).__init__()
+        if num_layers == 18:
+            # The following `layers` list defines the number of `BasicBlock`
+            # to use to build the network and how many basic blocks to stack
+            # together.
+            layers = [2, 2, 2, 2]
+            self.expansion = 1
+        
+        self.my_layer1 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer2 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.in_channels = 64
+        # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
+        # three layers. Here, kernel size is 7.
+        self.conv1 = nn.Conv2d(
+            in_channels=img_channels,
+            out_channels=self.in_channels,
+            kernel_size=7,
+            stride=2,
+            padding=3,
+            bias=False
+        )
+        self.bn1 = nn.BatchNorm2d(self.in_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),nn.LogSoftmax(dim=1))
+    
+
+    def _make_layer_pde(
+        self,
+        block: Type[BasicBlock],
+        out_channels: int,
+        blocks: int,
+        stride: int = 1
+    ) -> nn.Sequential:
+        downsample = None
+        if stride != 1:
+            """
+            This should pass from `layer2` to `layer4` or
+            when building ResNets50 and above. Section 3.3 of the paper
+            Deep Residual Learning for Image Recognition
+            (https://arxiv.org/pdf/1512.03385v1.pdf).
+            """
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.in_channels,
+                    out_channels*self.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False
+                ),
+                nn.BatchNorm2d(out_channels * self.expansion),
+            )
+        layers = []
+        layers.append(
+            block(
+                3, 3, stride, self.expansion, downsample
+            )
+        )
+        self.in_channels = out_channels * self.expansion
+        for i in range(1, blocks):
+            layers.append(block(
+                self.in_channels,
+                out_channels,
+                expansion=self.expansion
+            ))
+        return nn.Sequential(*layers)
+        
+    def _make_layer(
+        self,
+        block: Type[BasicBlock],
+        out_channels: int,
+        blocks: int,
+        stride: int = 1
+    ) -> nn.Sequential:
+        downsample = None
+        if stride != 1:
+            """
+            This should pass from `layer2` to `layer4` or
+            when building ResNets50 and above. Section 3.3 of the paper
+            Deep Residual Learning for Image Recognition
+            (https://arxiv.org/pdf/1512.03385v1.pdf).
+            """
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.in_channels,
+                    out_channels*self.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False
+                ),
+                nn.BatchNorm2d(out_channels * self.expansion),
+            )
+        layers = []
+        layers.append(
+            block(
+                self.in_channels, out_channels, stride, self.expansion, downsample
+            )
+        )
+        self.in_channels = out_channels * self.expansion
+        for i in range(1, blocks):
+            layers.append(block(
+                self.in_channels,
+                out_channels,
+                expansion=self.expansion
+            ))
+        return nn.Sequential(*layers)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.my_layer1(x)
+        x = self.my_layer2(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -554,32 +624,31 @@ class ResNet18_with_cable_eq_2(nn.Module):
 
 class ResNet18_with_cable_eq_3(nn.Module):
     def __init__(
-        self, 
+        self,
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
-        my_block: Type[PDE_Block],
+        my_block,
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq_3, self).__init__()
-        
         if num_layers == 18:
-            # The following `layers` list defines the number of `BasicBlock` 
+            # The following `layers` list defines the number of `BasicBlock`
             # to use to build the network and how many basic blocks to stack
             # together.
             layers = [2, 2, 2, 2]
             self.expansion = 1
         
+        self.my_layer1 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer2 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer3 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_3 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
-            kernel_size=7, 
+            kernel_size=7,
             stride=2,
             padding=3,
             bias=False
@@ -592,10 +661,11 @@ class ResNet18_with_cable_eq_3(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),
-                                nn.LogSoftmax(dim=1))
-    def _make_layer(
-        self, 
+        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),nn.LogSoftmax(dim=1))
+    
+
+    def _make_layer_pde(
+        self,
         block: Type[BasicBlock],
         out_channels: int,
         blocks: int,
@@ -604,18 +674,58 @@ class ResNet18_with_cable_eq_3(nn.Module):
         downsample = None
         if stride != 1:
             """
-            This should pass from `layer2` to `layer4` or 
+            This should pass from `layer2` to `layer4` or
             when building ResNets50 and above. Section 3.3 of the paper
             Deep Residual Learning for Image Recognition
             (https://arxiv.org/pdf/1512.03385v1.pdf).
             """
             downsample = nn.Sequential(
                 nn.Conv2d(
-                    self.in_channels, 
+                    self.in_channels,
                     out_channels*self.expansion,
                     kernel_size=1,
                     stride=stride,
-                    bias=False 
+                    bias=False
+                ),
+                nn.BatchNorm2d(out_channels * self.expansion),
+            )
+        layers = []
+        layers.append(
+            block(
+                3, 3, stride, self.expansion, downsample
+            )
+        )
+        self.in_channels = out_channels * self.expansion
+        for i in range(1, blocks):
+            layers.append(block(
+                self.in_channels,
+                out_channels,
+                expansion=self.expansion
+            ))
+        return nn.Sequential(*layers)
+        
+    def _make_layer(
+        self,
+        block: Type[BasicBlock],
+        out_channels: int,
+        blocks: int,
+        stride: int = 1
+    ) -> nn.Sequential:
+        downsample = None
+        if stride != 1:
+            """
+            This should pass from `layer2` to `layer4` or
+            when building ResNets50 and above. Section 3.3 of the paper
+            Deep Residual Learning for Image Recognition
+            (https://arxiv.org/pdf/1512.03385v1.pdf).
+            """
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.in_channels,
+                    out_channels*self.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False
                 ),
                 nn.BatchNorm2d(out_channels * self.expansion),
             )
@@ -634,9 +744,9 @@ class ResNet18_with_cable_eq_3(nn.Module):
             ))
         return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.mylayer_1(x)
-        x = self.mylayer_2(x)
-        x = self.mylayer_3(x)
+        x = self.my_layer1(x)
+        x = self.my_layer2(x)
+        x = self.my_layer3(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -645,9 +755,6 @@ class ResNet18_with_cable_eq_3(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        # The spatial dimension of the final layer's feature 
-        # map should be (7, 7) for all ResNets.
-        #print('Dimensions of the last convolutional feature map: ', x.shape)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
@@ -660,25 +767,24 @@ class ResNet18_with_cable_eq_4(nn.Module):
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
-        my_block: Type[PDE_Block],
+        my_block,
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq_4, self).__init__()
-    
         if num_layers == 18:
             # The following `layers` list defines the number of `BasicBlock`
             # to use to build the network and how many basic blocks to stack
             # together.
             layers = [2, 2, 2, 2]
             self.expansion = 1
-
+        
+        self.my_layer1 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer2 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer3 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer4 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_3 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_4 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -695,8 +801,49 @@ class ResNet18_with_cable_eq_4(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),
-                                nn.LogSoftmax(dim=1))
+        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),nn.LogSoftmax(dim=1))
+    
+
+    def _make_layer_pde(
+        self,
+        block: Type[BasicBlock],
+        out_channels: int,
+        blocks: int,
+        stride: int = 1
+    ) -> nn.Sequential:
+        downsample = None
+        if stride != 1:
+            """
+            This should pass from `layer2` to `layer4` or
+            when building ResNets50 and above. Section 3.3 of the paper
+            Deep Residual Learning for Image Recognition
+            (https://arxiv.org/pdf/1512.03385v1.pdf).
+            """
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.in_channels,
+                    out_channels*self.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False
+                ),
+                nn.BatchNorm2d(out_channels * self.expansion),
+            )
+        layers = []
+        layers.append(
+            block(
+                3, 3, stride, self.expansion, downsample
+            )
+        )
+        self.in_channels = out_channels * self.expansion
+        for i in range(1, blocks):
+            layers.append(block(
+                self.in_channels,
+                out_channels,
+                expansion=self.expansion
+            ))
+        return nn.Sequential(*layers)
+        
     def _make_layer(
         self,
         block: Type[BasicBlock],
@@ -737,10 +884,10 @@ class ResNet18_with_cable_eq_4(nn.Module):
             ))
         return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.mylayer_1(x)
-        x = self.mylayer_2(x)
-        x = self.mylayer_3(x)
-        x = self.mylayer_4(x)
+        x = self.my_layer1(x)
+        x = self.my_layer2(x)
+        x = self.my_layer3(x)
+        x = self.my_layer4(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -749,9 +896,6 @@ class ResNet18_with_cable_eq_4(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        # The spatial dimension of the final layer's feature
-        # map should be (7, 7) for all ResNets.
-        #print('Dimensions of the last convolutional feature map: ', x.shape)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
@@ -764,26 +908,25 @@ class ResNet18_with_cable_eq_5(nn.Module):
         img_channels: int,
         num_layers: int,
         block: Type[BasicBlock],
-        my_block: Type[PDE_Block],
+        my_block,
         num_classes: int  = 10
     ) -> None:
         super(ResNet18_with_cable_eq_5, self).__init__()
-        
         if num_layers == 18:
             # The following `layers` list defines the number of `BasicBlock`
             # to use to build the network and how many basic blocks to stack
             # together.
             layers = [2, 2, 2, 2]
             self.expansion = 1
-
+        
+        self.my_layer1 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer2 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer3 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer4 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
+        self.my_layer5 = self._make_layer_pde(block=my_block, out_channels=3, blocks=2)
         self.in_channels = 64
         # All ResNets (18 to 152) contain a Conv2d => BN => ReLU for the first
         # three layers. Here, kernel size is 7.
-        self.mylayer_1 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_2 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_3 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_4 = self._make_layer(my_block, out_channels=3, block=2)
-        self.mylayer_5 = self._make_layer(my_block, out_channels=3, block=2)
         self.conv1 = nn.Conv2d(
             in_channels=img_channels,
             out_channels=self.in_channels,
@@ -800,8 +943,49 @@ class ResNet18_with_cable_eq_5(nn.Module):
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),
-                                nn.LogSoftmax(dim=1))
+        self.fc = nn.Sequential(nn.Linear(512*self.expansion, num_classes),nn.LogSoftmax(dim=1))
+    
+
+    def _make_layer_pde(
+        self,
+        block: Type[BasicBlock],
+        out_channels: int,
+        blocks: int,
+        stride: int = 1
+    ) -> nn.Sequential:
+        downsample = None
+        if stride != 1:
+            """
+            This should pass from `layer2` to `layer4` or
+            when building ResNets50 and above. Section 3.3 of the paper
+            Deep Residual Learning for Image Recognition
+            (https://arxiv.org/pdf/1512.03385v1.pdf).
+            """
+            downsample = nn.Sequential(
+                nn.Conv2d(
+                    self.in_channels,
+                    out_channels*self.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False
+                ),
+                nn.BatchNorm2d(out_channels * self.expansion),
+            )
+        layers = []
+        layers.append(
+            block(
+                3, 3, stride, self.expansion, downsample
+            )
+        )
+        self.in_channels = out_channels * self.expansion
+        for i in range(1, blocks):
+            layers.append(block(
+                self.in_channels,
+                out_channels,
+                expansion=self.expansion
+            ))
+        return nn.Sequential(*layers)
+        
     def _make_layer(
         self,
         block: Type[BasicBlock],
@@ -842,11 +1026,11 @@ class ResNet18_with_cable_eq_5(nn.Module):
             ))
         return nn.Sequential(*layers)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.mylayer_1(x)
-        x = self.mylayer_2(x)
-        x = self.mylayer_3(x)
-        x = self.mylayer_4(x)
-        x = self.mylayer_5(x)
+        x = self.my_layer1(x)
+        x = self.my_layer2(x)
+        x = self.my_layer3(x)
+        x = self.my_layer4(x)
+        x = self.my_layer5(x)
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -855,13 +1039,11 @@ class ResNet18_with_cable_eq_5(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        # The spatial dimension of the final layer's feature
-        # map should be (7, 7) for all ResNets.
-        #print('Dimensions of the last convolutional feature map: ', x.shape)
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
         return x
+
 
 model_original = ResNet18(img_channels=3, num_layers=18, block=BasicBlock, num_classes=10).to(device)
 model_cable_eq = ResNet18_with_cable_eq(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
@@ -869,7 +1051,7 @@ model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
 model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
 model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
-models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 
 for model in models:
@@ -887,13 +1069,13 @@ for model in models:
     criterion = F.cross_entropy
     sched = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr, epochs=n_epochs, steps_per_epoch=len(trainloader))
     cable_eq_tr_loss, cable_eq_tr_acc, cable_eq_v_loss, cable_eq_v_acc = training(model, n_epochs, optimizer, criterion, sched)
-    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5/{model._get_name()}_best.pt')
+    torch.save(model.state_dict(), f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5_blocks/{model._get_name()}_best.pt')
     model_cable_eq_dict ={}
     model_cable_eq_dict['train_loss']=cable_eq_tr_loss
     model_cable_eq_dict['train_acc']=cable_eq_tr_acc
     model_cable_eq_dict['test_loss']=cable_eq_v_loss
     model_cable_eq_dict['test_acc']=cable_eq_v_acc
-    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5/{str(model._get_name())}_bn.pkl', 'wb') as fp:
+    with open(f'/home/rafayel.veziryan/cnn_exp/results/cifar10_lr_0.5_blocks/{str(model._get_name())}_bn.pkl', 'wb') as fp:
         pickle.dump(model_cable_eq_dict, fp)
         print('dictionary saved successfully to file')
 

@@ -1,3 +1,0 @@
-Model: ResNet9_par_4 
- Test Loss: 0.3605462610721588 
- Test Accuracy: 0.9097999334335327

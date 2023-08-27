@@ -332,7 +332,7 @@ class PDE_Block(nn.Module):
         expansion: int = 1,
         downsample: nn.Module = None
     ) -> None:
-        super(BasicBlock, self).__init__()
+        super(PDE_Block, self).__init__()
 
         # Multiplicative factor for the subsequent conv2d layer's output channels.
         # It is 1 for ResNet18 and ResNet34.
