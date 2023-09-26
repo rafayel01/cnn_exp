@@ -1051,14 +1051,14 @@ model_cable_eq_2 = ResNet18_with_cable_eq_2(img_channels=3, num_layers=18, block
 model_cable_eq_3 = ResNet18_with_cable_eq_3(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
 model_cable_eq_4 = ResNet18_with_cable_eq_4(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
 model_cable_eq_5 = ResNet18_with_cable_eq_5(img_channels=3, num_layers=18, block=BasicBlock, my_block=PDE_Block, num_classes=10).to(device)
-models = (model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
+models = (model_cable_eq, model_cable_eq_2, model_cable_eq_3, model_cable_eq_4, model_cable_eq_5)
 
 
 for model in models:
     print(f"{model._get_name()}: {parameter_count(model)}")
 
 
-
+'''
 for model in models:
     valid_loss_min = np.Inf
     n_epochs = 100
